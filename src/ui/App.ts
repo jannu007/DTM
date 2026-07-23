@@ -29,6 +29,8 @@ export class App {
   computerKeyboard!: ComputerKeyboard;
   gridApi: { highlightStep: (step: number) => void } | null = null;
   root: HTMLElement;
+  private bpmKnob: HTMLElement | null = null;
+  private swingKnob: HTMLElement | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -199,6 +201,7 @@ export class App {
       },
     });
     bar.appendChild(bpmKnob);
+    this.bpmKnob = bpmKnob;
 
     const swingKnob = createKnob({
       label: 'Swing',
@@ -211,6 +214,7 @@ export class App {
       },
     });
     bar.appendChild(swingKnob);
+    this.swingKnob = swingKnob;
 
     const volKnob = createKnob({
       label: 'Master',
@@ -302,6 +306,8 @@ export class App {
         this.renderTrackList();
         this.renderSynthPanel();
         this.renderSequencerGrid();
+        (this.bpmKnob as any)?.setKnobValue(this.sequencer.bpm);
+        (this.swingKnob as any)?.setKnobValue(this.sequencer.swing);
       } catch (err) {
         alert('読み込みに失敗しました: ' + err);
       }
