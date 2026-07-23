@@ -35,11 +35,11 @@ function scheduleAttackDecay(
   param.linearRampToValueAtTime(sustainVal, t0 + a + d);
 }
 
-function scheduleRelease(param: AudioParam, tOff: number, env: Envelope, base: number) {
+function scheduleRelease(param: AudioParam, tOff: number, env: Envelope, fromValue: number, toValue: number) {
   const r = Math.max(0.01, env.release);
   param.cancelScheduledValues(tOff);
-  param.setValueAtTime(param.value, tOff);
-  param.linearRampToValueAtTime(base, tOff + r);
+  param.setValueAtTime(fromValue, tOff);
+  param.linearRampToValueAtTime(toValue, tOff + r);
 }
 
 interface OscHandle {
@@ -67,6 +67,8 @@ export class Voice {
   private stopped = false;
   private stopTimer: number | null = null;
   private baseFreq: number;
+  private sustainAmpValue = 0;
+  private sustainCutoffValue = 0;
 
   constructor(engine: AudioEngine, patch: Patch, midiNote: number, velocity: number, destination: AudioNode, startTime: number) {
     this.engine = engine;
@@ -202,12 +204,13 @@ export class Voice {
     // envelopes
     const vel = Math.max(0.05, Math.min(1, velocity));
     const peakAmp = vel * patch.volume;
-    scheduleAttackDecay(this.outGain.gain, startTime, patch.ampEnv, 0, peakAmp, peakAmp * patch.ampEnv.sustain);
+    this.sustainAmpValue = peakAmp * patch.ampEnv.sustain;
+    scheduleAttackDecay(this.outGain.gain, startTime, patch.ampEnv, 0, peakAmp, this.sustainAmpValue);
 
     const filterRange = 6000 * (patch.filter.envAmount >= 0 ? 1 : -1);
     const peakCutoff = clampFreq(patch.filter.cutoff + Math.abs(patch.filter.envAmount) * filterRange * Math.sign(patch.filter.envAmount || 1));
-    const sustainCutoff = clampFreq(patch.filter.cutoff + patch.filter.envAmount * filterRange * patch.filterEnv.sustain);
-    scheduleAttackDecay(this.filter.frequency, startTime, patch.filterEnv, patch.filter.cutoff, peakCutoff, sustainCutoff);
+    this.sustainCutoffValue = clampFreq(patch.filter.cutoff + patch.filter.envAmount * filterRange * patch.filterEnv.sustain);
+    scheduleAttackDecay(this.filter.frequency, startTime, patch.filterEnv, patch.filter.cutoff, peakCutoff, this.sustainCutoffValue);
   }
 
   private buildOsc(o: OscParams, freq: number, startTime: number): OscHandle {
@@ -296,17 +299,18 @@ export class Voice {
   retrigger(velocity: number, time: number) {
     const vel = Math.max(0.05, Math.min(1, velocity));
     const peakAmp = vel * this.patch.volume;
-    scheduleAttackDecay(this.outGain.gain, time, this.patch.ampEnv, 0, peakAmp, peakAmp * this.patch.ampEnv.sustain);
+    this.sustainAmpValue = peakAmp * this.patch.ampEnv.sustain;
+    scheduleAttackDecay(this.outGain.gain, time, this.patch.ampEnv, 0, peakAmp, this.sustainAmpValue);
     const filterRange = 6000;
     const peakCutoff = clampFreq(this.patch.filter.cutoff + Math.abs(this.patch.filter.envAmount) * filterRange);
-    const sustainCutoff = clampFreq(this.patch.filter.cutoff + this.patch.filter.envAmount * filterRange * this.patch.filterEnv.sustain);
-    scheduleAttackDecay(this.filter.frequency, time, this.patch.filterEnv, this.patch.filter.cutoff, peakCutoff, sustainCutoff);
+    this.sustainCutoffValue = clampFreq(this.patch.filter.cutoff + this.patch.filter.envAmount * filterRange * this.patch.filterEnv.sustain);
+    scheduleAttackDecay(this.filter.frequency, time, this.patch.filterEnv, this.patch.filter.cutoff, peakCutoff, this.sustainCutoffValue);
   }
 
   noteOff(time: number) {
     if (this.stopped) return;
-    scheduleRelease(this.outGain.gain, time, this.patch.ampEnv, 0);
-    scheduleRelease(this.filter.frequency, time, this.patch.filterEnv, this.patch.filter.cutoff);
+    scheduleRelease(this.outGain.gain, time, this.patch.ampEnv, this.sustainAmpValue, 0);
+    scheduleRelease(this.filter.frequency, time, this.patch.filterEnv, this.sustainCutoffValue, this.patch.filter.cutoff);
     const stopAt = time + this.patch.ampEnv.release + 0.05;
     this.scheduleStop(stopAt);
   }
