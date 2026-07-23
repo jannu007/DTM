@@ -1,0 +1,16 @@
+{
+  "name": "DTM Synth Studio",
+  "short_name": "DTM Synth",
+  "description": "無料のバーチャルアナログ・シンセサイザー / DTM ワークステーション",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1b20",
+  "theme_color": "#1a1b20",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
