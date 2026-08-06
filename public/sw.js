@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dtm-synth-cache-v1';
+const CACHE_NAME = 'micro-dtm-studio-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
