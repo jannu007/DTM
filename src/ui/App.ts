@@ -34,23 +34,7 @@ export class App {
 
   constructor(root: HTMLElement) {
     this.root = root;
-    this.renderStartOverlay();
-  }
-
-  private renderStartOverlay() {
-    this.root.innerHTML = '';
-    const overlay = document.createElement('div');
-    overlay.className = 'start-overlay';
-    const btn = document.createElement('button');
-    btn.className = 'start-btn';
-    btn.textContent = 'オーディオを開始 / START AUDIO';
-    btn.addEventListener('click', () => this.start());
-    const title = document.createElement('div');
-    title.className = 'start-title';
-    title.innerHTML = 'MICRO DTM STUDIO<br><span>Virtual Analog Workstation</span>';
-    overlay.appendChild(title);
-    overlay.appendChild(btn);
-    this.root.appendChild(overlay);
+    this.start();
   }
 
   private start() {
