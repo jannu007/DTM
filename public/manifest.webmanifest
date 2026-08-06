@@ -1,6 +1,6 @@
 {
-  "name": "Micro DTM Studio",
-  "short_name": "Micro DTM",
+  "name": "Micro Sakura Studio",
+  "short_name": "Micro Sakura",
   "description": "無料のバーチャルアナログ・シンセサイザー / DTM ワークステーション",
   "start_url": "./",
   "scope": "./",

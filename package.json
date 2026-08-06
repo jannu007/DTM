@@ -21,8 +21,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.microdtmstudio.app",
-    "productName": "Micro DTM Studio",
+    "appId": "com.microsakurastudio.app",
+    "productName": "Micro Sakura Studio",
     "files": [
       "dist/**/*",
       "electron/**/*"

@@ -1,4 +1,4 @@
-# Micro DTM Studio
+# Micro Sakura Studio
 
 **完全無料** のバーチャルアナログ・シンセサイザー / DTM（音楽制作）アプリです。
 Korg microKORG 系のシンセシス（2オシレーター + フィルター + アンプ/フィルターEG + LFO x2 +
