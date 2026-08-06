@@ -2,6 +2,7 @@
   "name": "DTM Synth Studio",
   "short_name": "DTM Synth",
   "description": "無料のバーチャルアナログ・シンセサイザー / DTM ワークステーション",
+  "id": "/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
