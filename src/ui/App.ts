@@ -226,7 +226,7 @@ export class App {
         const blob = this.engine.stopRecording();
         recBtn.textContent = '● REC';
         recBtn.classList.remove('active');
-        if (blob) this.downloadBlob(blob, `micro-dtm-studio-recording-${Date.now()}.wav`);
+        if (blob) this.downloadBlob(blob, `micro-sakura-studio-recording-${Date.now()}.wav`);
       } else {
         this.engine.startRecording();
         recBtn.textContent = '● REC中...';
@@ -255,7 +255,7 @@ export class App {
 
     const logo = document.createElement('div');
     logo.className = 'brand-logo';
-    logo.textContent = 'MICRO DTM STUDIO';
+    logo.textContent = 'MICRO SAKURA STUDIO';
     bar.insertBefore(logo, bar.firstChild);
 
     return bar;
@@ -273,8 +273,8 @@ export class App {
   private saveSong() {
     const data = this.sequencer.toJSON();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    this.downloadBlob(blob, `micro-dtm-studio-song-${Date.now()}.json`);
-    localStorage.setItem('micro-dtm-studio-autosave', JSON.stringify(data));
+    this.downloadBlob(blob, `micro-sakura-studio-song-${Date.now()}.json`);
+    localStorage.setItem('micro-sakura-studio-autosave', JSON.stringify(data));
   }
 
   private loadSongFile(input: HTMLInputElement) {
