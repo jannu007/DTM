@@ -21,8 +21,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.dtmsynth.app",
-    "productName": "DTM Synth",
+    "appId": "com.microdtmstudio.app",
+    "productName": "Micro DTM Studio",
     "files": [
       "dist/**/*",
       "electron/**/*"

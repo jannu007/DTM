@@ -47,7 +47,7 @@ export class App {
     btn.addEventListener('click', () => this.start());
     const title = document.createElement('div');
     title.className = 'start-title';
-    title.innerHTML = 'DTM SYNTH STUDIO<br><span>Virtual Analog Workstation</span>';
+    title.innerHTML = 'MICRO DTM STUDIO<br><span>Virtual Analog Workstation</span>';
     overlay.appendChild(title);
     overlay.appendChild(btn);
     this.root.appendChild(overlay);
@@ -242,7 +242,7 @@ export class App {
         const blob = this.engine.stopRecording();
         recBtn.textContent = '● REC';
         recBtn.classList.remove('active');
-        if (blob) this.downloadBlob(blob, `dtm-synth-recording-${Date.now()}.wav`);
+        if (blob) this.downloadBlob(blob, `micro-dtm-studio-recording-${Date.now()}.wav`);
       } else {
         this.engine.startRecording();
         recBtn.textContent = '● REC中...';
@@ -271,7 +271,7 @@ export class App {
 
     const logo = document.createElement('div');
     logo.className = 'brand-logo';
-    logo.textContent = 'DTM SYNTH STUDIO';
+    logo.textContent = 'MICRO DTM STUDIO';
     bar.insertBefore(logo, bar.firstChild);
 
     return bar;
@@ -289,8 +289,8 @@ export class App {
   private saveSong() {
     const data = this.sequencer.toJSON();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    this.downloadBlob(blob, `dtm-synth-song-${Date.now()}.json`);
-    localStorage.setItem('dtm-synth-autosave', JSON.stringify(data));
+    this.downloadBlob(blob, `micro-dtm-studio-song-${Date.now()}.json`);
+    localStorage.setItem('micro-dtm-studio-autosave', JSON.stringify(data));
   }
 
   private loadSongFile(input: HTMLInputElement) {
