@@ -10,7 +10,11 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "electron:dev": "vite build && electron electron/main.cjs",
-    "electron:build": "vite build && electron-builder --win portable"
+    "electron:build": "vite build && electron-builder --win portable",
+    "piano:dev": "vite --open /piano/",
+    "piano:icons": "node scripts/gen-piano-icons.mjs",
+    "piano:electron": "vite build && electron electron/piano-main.cjs",
+    "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
