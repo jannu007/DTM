@@ -126,6 +126,21 @@ html, body {
 
 .header-actions { display: flex; gap: 0.4rem; flex: none; }
 
+.panic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.panic-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
+}
+
+.panic-btn:hover { color: var(--brass-soft); }
+
 /* ------------------------------------------------------------------ layout */
 
 .main-area {
@@ -647,7 +662,8 @@ html, body {
   .topbar { padding: 0.45rem 0.6rem; gap: 0.5rem; }
   .brand-text { display: none; }
   .octave-btn { display: none; }
-  .panic-btn { font-size: 0.72rem; padding: 0.45rem 0.6rem; }
+  .panic-btn { padding: 0.45rem 0.55rem; }
+  .panic-btn .btn-text { display: none; }
   .btn.pedal { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .panel-body { padding: 0.8rem 0.75rem 1.6rem; }
   .btn.pedal.wide { min-width: 0; flex: 1; }

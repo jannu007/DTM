@@ -231,11 +231,18 @@ export class PianoApp {
 
     this.statusEl = el('div', 'status');
 
+    // 全停止（鳴っている音・ペダル・再生をまとめて止める）
+    const panicButton = button('', 'ghost panic-btn', () => this.panic());
+    panicButton.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+      + '<circle cx="12" cy="12" r="9.4" fill="none" stroke="currentColor" stroke-width="1.7" />'
+      + '<rect x="8.6" y="8.6" width="6.8" height="6.8" rx="1.2" fill="currentColor" />'
+      + '</svg><span class="btn-text">全停止</span>';
+    panicButton.title = 'すべての音を止める（Esc）';
+    panicButton.setAttribute('aria-label', 'すべての音を止める');
+
     const headerActions = el('div', 'header-actions');
-    headerActions.append(
-      button('パニック', 'ghost panic-btn', () => this.panic()),
-      button('?', 'ghost round', () => this.toggleHelp())
-    );
+    headerActions.append(panicButton, button('?', 'ghost round', () => this.toggleHelp()));
 
     header.append(brand, presetWrap, this.statusEl, headerActions);
 
