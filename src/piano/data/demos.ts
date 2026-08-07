@@ -44,9 +44,62 @@ class Take {
     this.pedal(barStart + 0.06, 1);
   }
 
+  /** 指定した時刻ごとにペダルを踏み替え、最後に離す */
+  pedalMarks(times: number[], end: number) {
+    for (const t of times) this.pedalPerBar(t);
+    this.pedal(end, 0);
+  }
+
+  /**
+   * 楽譜文字列を並べる。
+   *   "C5:1 D5:0.5 r:1 C4+E4+G4:2"  … 音名:長さ（長さは unit の倍数）
+   *   末尾の "!" で強め、"~" で弱め
+   * 返り値は次の音が始まる時刻。
+   */
+  seq(start: number, spec: string, unit: number, vel: number, legato = 0.92): number {
+    let time = start;
+    for (const token of spec.trim().split(/\s+/)) {
+      if (!token || token === '|') continue;
+      const [head, lenText] = token.split(':');
+      const len = Number(lenText ?? 1) * unit;
+      let v = vel;
+      let names = head;
+      if (names.endsWith('!')) { v += 0.12; names = names.slice(0, -1); }
+      else if (names.endsWith('~')) { v -= 0.1; names = names.slice(0, -1); }
+      if (names !== 'r' && names !== 'R') {
+        for (const name of names.split('+')) {
+          this.note(time, midiOf(name), Math.max(0.06, len * legato), v);
+        }
+      }
+      time += len;
+    }
+    return time;
+  }
+
+  /** 和音をまとめて置く */
+  hit(time: number, names: string[], duration: number, vel: number) {
+    for (const name of names) this.note(time, midiOf(name), duration, vel, 0.008);
+  }
+
   done(): PerformanceEvent[] {
     return this.events.sort((a, b) => a.time - b.time);
   }
+}
+
+const STEP: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+/** "C#4" "Bb2" "F5" → MIDIノート番号 */
+function midiOf(name: string): number {
+  const m = /^([A-Ga-g])([#b]*)(-?\d)$/.exec(name.trim());
+  if (!m) throw new Error(`音名を解釈できません: ${name}`);
+  let value = STEP[m[1].toUpperCase()];
+  for (const accidental of m[2]) value += accidental === '#' ? 1 : -1;
+  return value + (Number(m[3]) + 1) * 12;
+}
+
+/** 同じフレーズを繰り返す */
+function repeat(spec: string, times: number): string {
+  return new Array(times).fill(spec).join(' ');
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +247,558 @@ function buildNocturne(): PerformanceEvent[] {
   return take.done();
 }
 
+// ---------------------------------------------------------------------------
+// L.v. ベートーヴェン「エリーゼのために」WoO 59（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+function buildFurElise(): PerformanceEvent[] {
+  const take = new Take(18100);
+  const u = 0.152; // 16分音符
+
+  // 主題（前半）と終止形（後半）
+  const rhA = 'E5:1 D#5:1 E5:1 D#5:1 E5:1 B4:1 D5:1 C5:1 A4:4 r:2 '
+    + 'C4:1 E4:1 A4:1 B4:4 r:2 E4:1 G#4:1 B4:1 C5:4 r:2 E4:1 E5:1 D#5:1';
+  const lhA = 'r:8 A2:2 E3:2 A3:2 r:3 E2:2 E3:2 G#3:2 r:3 A2:2 E3:2 A3:2 r:3';
+  const rhB = 'E5:1 D#5:1 E5:1 D#5:1 E5:1 B4:1 D5:1 C5:1 A4:4 r:2 '
+    + 'C4:1 E4:1 A4:1 B4:4 r:2 E4:1 C5:1 B4:1 A4:8';
+  const lhB = 'r:8 A2:2 E3:2 A3:2 r:3 E2:2 E3:2 G#3:2 r:3 A2:8';
+
+  let time = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    const vel = pass === 0 ? 0.5 : 0.58;
+    take.seq(time, rhA, u, vel, 0.85);
+    take.seq(time, lhA, u, vel - 0.12, 0.9);
+    take.pedalMarks([8, 17, 26].map((n) => time + n * u), time + 35 * u);
+    time += 35 * u;
+
+    take.seq(time, rhB, u, vel, 0.85);
+    take.seq(time, lhB, u, vel - 0.12, 0.9);
+    take.pedalMarks([8, 17, 26].map((n) => time + n * u), time + 34 * u + 1.6);
+    time += 34 * u;
+  }
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// L.v. ベートーヴェン ピアノソナタ第14番「月光」第1楽章 冒頭（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+function buildMoonlight(): PerformanceEvent[] {
+  const take = new Take(18010);
+  const u = 0.385; // 3連符1つ
+  const bar = 12 * u;
+
+  // 3連符アルペジオと低音（1小節ぶん）
+  const bars: { arp: string; bass: string[] }[] = [
+    { arp: repeat('G#3:1 C#4:1 E4:1', 4), bass: ['C#2', 'C#3'] },
+    { arp: repeat('G#3:1 C#4:1 E4:1', 4), bass: ['C#2', 'C#3'] },
+    { arp: repeat('A3:1 C#4:1 E4:1', 2) + ' ' + repeat('A3:1 D4:1 F#4:1', 2), bass: ['A1', 'A2'] },
+    { arp: repeat('G#3:1 B#3:1 F#4:1', 2) + ' ' + repeat('G#3:1 C#4:1 E4:1', 2), bass: ['G#1', 'G#2'] },
+  ];
+  // 2巡目に重ねる旋律
+  const melody = ['G#4:12', 'G#4:6 G#4:2 G#4:4', 'A4:6 F#4:6', 'G#4:8 F#4:4'];
+
+  let time = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    bars.forEach((b, i) => {
+      take.pedalPerBar(time);
+      take.seq(time, b.arp, u, 0.3, 0.95);
+      take.hit(time, b.bass, bar * 0.98, 0.42);
+      if (pass === 1) take.seq(time, melody[i], u, 0.58, 0.98);
+      time += bar;
+    });
+  }
+
+  // 終止
+  take.pedalPerBar(time);
+  take.seq(time, bars[0].arp, u, 0.26, 0.95);
+  take.hit(time, bars[0].bass, bar, 0.38);
+  take.seq(time, 'G#4:12', u, 0.5, 0.98);
+  time += bar;
+  take.pedalPerBar(time);
+  take.hit(time, ['C#2', 'C#3', 'G#3', 'C#4', 'E4'], 5, 0.4);
+  take.pedal(time + 5.5, 0);
+
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// J. パッヘルベル「カノン ニ長調」（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const CANON_GROUND: { bass: string; chord: string[]; arp: string }[] = [
+  { bass: 'D2', chord: ['F#3', 'A3'], arp: 'F#4:1 A4:1 D5:1 A4:1' },
+  { bass: 'A2', chord: ['E3', 'A3'], arp: 'E4:1 A4:1 C#5:1 A4:1' },
+  { bass: 'B2', chord: ['F#3', 'B3'], arp: 'D4:1 F#4:1 B4:1 F#4:1' },
+  { bass: 'F#2', chord: ['C#3', 'F#3'], arp: 'C#4:1 F#4:1 A4:1 F#4:1' },
+  { bass: 'G2', chord: ['D3', 'G3'], arp: 'B3:1 D4:1 G4:1 D4:1' },
+  { bass: 'D2', chord: ['F#3', 'A3'], arp: 'A3:1 D4:1 F#4:1 D4:1' },
+  { bass: 'G2', chord: ['D3', 'G3'], arp: 'B3:1 D4:1 G4:1 D4:1' },
+  { bass: 'A2', chord: ['E3', 'A3'], arp: 'C#4:1 E4:1 A4:1 E4:1' },
+];
+
+/** 有名な上声（1和音につき2拍） */
+const CANON_DESCANT = ['F#5', 'E5', 'D5', 'C#5', 'B4', 'A4', 'B4', 'C#5'];
+
+function buildCanon(): PerformanceEvent[] {
+  const take = new Take(16800);
+  const u = 0.44; // 8分音符（♩≒68）
+  const chordLen = 4 * u;
+
+  let time = 0;
+  for (let cycle = 0; cycle < 4; cycle++) {
+    CANON_GROUND.forEach((g, i) => {
+      take.pedalPerBar(time);
+      take.hit(time, [g.bass], chordLen * 0.95, 0.42);
+      take.hit(time + 2 * u, g.chord, chordLen * 0.5, 0.32);
+      if (cycle >= 1 && cycle !== 2) {
+        take.seq(time, `${CANON_DESCANT[i]}:4`, u, 0.52, 0.98);
+      }
+      if (cycle >= 2) {
+        take.seq(time, g.arp, u, cycle === 2 ? 0.44 : 0.38, 0.9);
+      }
+      time += chordLen;
+    });
+  }
+
+  // 終止（ニ長調の主和音）
+  take.pedalPerBar(time);
+  take.hit(time, ['D2', 'A2', 'F#3', 'A3', 'D4', 'F#4'], 4.5, 0.45);
+  take.pedal(time + 5, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// C. ペツォールト「メヌエット ト長調」BWV Anh.114（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const MINUET_RH = [
+  'D5:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5',
+  'D5:1 G4:1 G4:1',
+  'E5:1 C5:0.5 D5:0.5 E5:0.5 F#5:0.5',
+  'G5:1 G4:1 G4:1',
+  'C5:1 D5:0.5 C5:0.5 B4:0.5 A4:0.5',
+  'B4:1 C5:0.5 B4:0.5 A4:0.5 G4:0.5',
+  'F#4:1 G4:0.5 A4:0.5 B4:0.5 G4:0.5',
+  'A4:3',
+  'D5:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5',
+  'D5:1 G4:1 G4:1',
+  'E5:1 C5:0.5 D5:0.5 E5:0.5 F#5:0.5',
+  'G5:1 G4:1 G4:1',
+  'C5:1 D5:0.5 C5:0.5 B4:0.5 A4:0.5',
+  'B4:1 C5:0.5 B4:0.5 A4:0.5 G4:0.5',
+  'A4:1 B4:0.5 A4:0.5 G4:0.5 F#4:0.5',
+  'G4:3',
+];
+
+const MINUET_LH: { bass: string; chord: string[] }[] = [
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'D3', chord: ['F#3', 'A3'] },
+  { bass: 'D3', chord: ['F#3', 'A3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+  { bass: 'D3', chord: ['F#3', 'A3'] },
+  { bass: 'G2', chord: ['D3', 'B3'] },
+];
+
+function buildMinuet(): PerformanceEvent[] {
+  const take = new Take(17250);
+  const u = 0.46; // 4分音符（♩≒130）
+  const bar = 3 * u;
+
+  let time = 0;
+  MINUET_RH.forEach((spec, i) => {
+    const lh = MINUET_LH[i];
+    take.seq(time, spec, u, i === 0 || i === 8 ? 0.58 : 0.52, 0.88);
+    take.hit(time, [lh.bass], u * 0.9, 0.42);
+    take.hit(time + u, lh.chord, u * 0.9, 0.3);
+    take.hit(time + 2 * u, lh.chord, u * 0.9, 0.28);
+    time += bar;
+  });
+  take.pedal(time, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// L.v. ベートーヴェン 交響曲第9番より「歓喜の歌」（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const JOY_RH = [
+  'F#5:1 F#5:1 G5:1 A5:1',
+  'A5:1 G5:1 F#5:1 E5:1',
+  'D5:1 D5:1 E5:1 F#5:1',
+  'F#5:1.5 E5:0.5 E5:2',
+  'F#5:1 F#5:1 G5:1 A5:1',
+  'A5:1 G5:1 F#5:1 E5:1',
+  'D5:1 D5:1 E5:1 F#5:1',
+  'E5:1.5 D5:0.5 D5:2',
+  'E5:1 E5:1 F#5:1 D5:1',
+  'E5:1 F#5:0.5 G5:0.5 F#5:1 D5:1',
+  'E5:1 F#5:0.5 G5:0.5 F#5:1 E5:1',
+  'D5:1 E5:1 A4:2',
+  'F#5:1 F#5:1 G5:1 A5:1',
+  'A5:1 G5:1 F#5:1 E5:1',
+  'D5:1 D5:1 E5:1 F#5:1',
+  'E5:1.5 D5:0.5 D5:2',
+];
+
+const JOY_LH: { bass: string; chord: string[] }[] = [
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'A2', chord: ['A3', 'C#4', 'E4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+  { bass: 'D2', chord: ['A3', 'D4', 'F#4'] },
+];
+
+function buildOdeToJoy(): PerformanceEvent[] {
+  const take = new Take(18240);
+  const u = 0.5; // 4分音符（♩=120）
+  const bar = 4 * u;
+
+  let time = 0;
+  JOY_RH.forEach((spec, i) => {
+    const lh = JOY_LH[i];
+    take.pedalPerBar(time);
+    // 後半にかけて盛り上げる
+    const vel = 0.48 + (i >= 12 ? 0.12 : i >= 8 ? 0.06 : 0);
+    take.seq(time, spec, u, vel, 0.9);
+    take.hit(time, [lh.bass], bar * 0.95, vel - 0.08);
+    take.hit(time + 2 * u, lh.chord, 2 * u * 0.9, vel - 0.16);
+    time += bar;
+  });
+
+  take.pedalPerBar(time);
+  take.hit(time, ['D2', 'D3', 'A3', 'D4', 'F#4'], 4, 0.55);
+  take.pedal(time + 4.5, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// 「きらきら星」フランス民謡（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const TWINKLE_RH = [
+  'C5:1 C5:1 G5:1 G5:1',
+  'A5:1 A5:1 G5:2',
+  'F5:1 F5:1 E5:1 E5:1',
+  'D5:1 D5:1 C5:2',
+  'G5:1 G5:1 F5:1 F5:1',
+  'E5:1 E5:1 D5:2',
+  'G5:1 G5:1 F5:1 F5:1',
+  'E5:1 E5:1 D5:2',
+  'C5:1 C5:1 G5:1 G5:1',
+  'A5:1 A5:1 G5:2',
+  'F5:1 F5:1 E5:1 E5:1',
+  'D5:1 D5:1 C5:2',
+];
+
+/** 半小節ごとの和音（アルベルティ・バスに展開する） */
+const TWINKLE_CHORDS: string[][] = [
+  ['C3', 'G3', 'E3'], ['C3', 'G3', 'E3'],
+  ['F3', 'C4', 'A3'], ['C3', 'G3', 'E3'],
+  ['F3', 'C4', 'A3'], ['C3', 'G3', 'E3'],
+  ['G2', 'D3', 'B3'], ['C3', 'G3', 'E3'],
+  ['C3', 'G3', 'E3'], ['F3', 'C4', 'A3'],
+  ['C3', 'G3', 'E3'], ['G2', 'D3', 'B3'],
+  ['C3', 'G3', 'E3'], ['F3', 'C4', 'A3'],
+  ['C3', 'G3', 'E3'], ['G2', 'D3', 'B3'],
+  ['C3', 'G3', 'E3'], ['C3', 'G3', 'E3'],
+  ['F3', 'C4', 'A3'], ['C3', 'G3', 'E3'],
+  ['F3', 'C4', 'A3'], ['C3', 'G3', 'E3'],
+  ['G2', 'D3', 'B3'], ['C3', 'G3', 'E3'],
+];
+
+function buildTwinkle(): PerformanceEvent[] {
+  const take = new Take(17610);
+  const u = 0.5; // 4分音符（♩=120）
+  const bar = 4 * u;
+
+  let time = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    TWINKLE_RH.forEach((spec, i) => {
+      take.pedalPerBar(time);
+      // 2巡目は1オクターブ上でオルゴールのように
+      const melody = pass === 0 ? spec : spec.replace(/([A-G]#?)(\d)/g, (_, n, o) => `${n}${Number(o) + 1}`);
+      take.seq(time, melody, u, pass === 0 ? 0.5 : 0.4, 0.9);
+      // アルベルティ・バス（8分音符）
+      for (let half = 0; half < 2; half++) {
+        const [a, b, c] = TWINKLE_CHORDS[i * 2 + half];
+        take.seq(time + half * 2 * u, `${a}:0.5 ${b}:0.5 ${c}:0.5 ${b}:0.5`, u, 0.3, 0.9);
+      }
+      time += bar;
+    });
+  }
+  take.pedalPerBar(time);
+  take.hit(time, ['C3', 'G3', 'C4', 'E4', 'C5'], 3.5, 0.4);
+  take.pedal(time + 4, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// 「アメイジング・グレイス」賛美歌（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const GRACE_BARS = [
+  'G4:2 B4:0.5 G4:0.5',
+  'B4:2 A4:1',
+  'G4:2 E4:1',
+  'D4:2 D4:1',
+  'G4:2 B4:0.5 G4:0.5',
+  'B4:2 A4:1',
+  'D5:3',
+  'D5:2 D5:1',
+  'D5:2 B4:1',
+  'D5:2 B4:1',
+  'A4:3',
+  'G4:2 E4:1',
+  'D4:2 D4:1',
+  'G4:2 B4:0.5 G4:0.5',
+  'B4:2 A4:1',
+  'G4:3',
+];
+
+const GRACE_LH: { bass: string; chord: string[] }[] = [
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'D3', chord: ['F#3', 'A3', 'D4'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'D3', chord: ['F#3', 'A3', 'D4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'D3', chord: ['F#3', 'A3', 'D4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+];
+
+function buildAmazingGrace(): PerformanceEvent[] {
+  const take = new Take(17790);
+  const u = 0.72; // 4分音符（♩≒84）
+  const bar = 3 * u;
+
+  // アウフタクト
+  let time = 0;
+  take.seq(time, 'D4:1', u, 0.45, 0.9);
+  time += u;
+
+  GRACE_BARS.forEach((spec, i) => {
+    const lh = GRACE_LH[i];
+    take.pedalPerBar(time);
+    const vel = 0.46 + (i >= 6 && i <= 11 ? 0.08 : 0);
+    take.seq(time, spec, u, vel, 0.95);
+    take.hit(time, [lh.bass], bar * 0.95, vel - 0.1);
+    take.hit(time + u, lh.chord, 2 * u * 0.9, vel - 0.18);
+    time += bar;
+  });
+
+  take.pedalPerBar(time);
+  take.hit(time, ['G2', 'D3', 'G3', 'B3', 'G4'], 4, 0.4);
+  take.pedal(time + 4.5, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// 「グリーンスリーブス」イングランド民謡（パブリックドメイン）
+// ---------------------------------------------------------------------------
+
+const GREEN_BARS = [
+  'C5:2 D5:1 E5:2 F5:1',
+  'E5:3 D5:2 B4:1',
+  'G4:2 A4:1 B4:2 C5:1',
+  'A4:3 A4:2 G#4:1',
+  'C5:2 D5:1 E5:2 F5:1',
+  'E5:3 D5:2 B4:1',
+  'G4:2 A4:1 B4:2 G#4:1',
+  'A4:6',
+  'G5:3 F5:2 E5:1',
+  'E5:3 D5:2 B4:1',
+  'G4:2 A4:1 B4:2 C5:1',
+  'A4:3 A4:2 G#4:1',
+  'G5:3 F5:2 E5:1',
+  'E5:3 D5:2 B4:1',
+  'G4:2 A4:1 B4:2 G#4:1',
+  'A4:6',
+];
+
+const GREEN_LH: { bass: string; chord: string[] }[] = [
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'E2', chord: ['E3', 'G#3', 'B3'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'E2', chord: ['E3', 'G#3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'E2', chord: ['E3', 'G#3', 'B3'] },
+  { bass: 'C3', chord: ['E3', 'G3', 'C4'] },
+  { bass: 'G2', chord: ['D3', 'G3', 'B3'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+  { bass: 'A2', chord: ['E3', 'A3', 'C4'] },
+];
+
+function buildGreensleeves(): PerformanceEvent[] {
+  const take = new Take(15800);
+  const u = 0.28; // 8分音符（6/8, ♩.≒71）
+  const bar = 6 * u;
+
+  let time = 0;
+  take.seq(time, 'A4:1', u, 0.42, 0.9);
+  time += u;
+
+  GREEN_BARS.forEach((spec, i) => {
+    const lh = GREEN_LH[i];
+    take.pedalPerBar(time);
+    const vel = 0.46 + (i >= 8 ? 0.08 : 0);
+    take.seq(time, spec, u, vel, 0.92);
+    take.hit(time, [lh.bass], bar * 0.5, vel - 0.12);
+    take.hit(time + 3 * u, lh.chord, bar * 0.45, vel - 0.2);
+    time += bar;
+  });
+
+  take.pedalPerBar(time);
+  take.hit(time, ['A2', 'E3', 'A3', 'C4', 'E4'], 3.5, 0.38);
+  take.pedal(time + 4, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// オリジナル「星降る夜のワルツ」（本アプリ書き下ろし）
+// ---------------------------------------------------------------------------
+
+const WALTZ_RH = [
+  'A4:1 C5:1 F5:1', 'E5:2 C5:1', 'D5:1 F5:1 A5:1', 'G5:2 D5:1',
+  'A5:1 G5:1 F5:1', 'E5:2 G5:1', 'F5:3', 'r:1 C5:1 E5:1',
+  'D5:2 F5:1', 'A4:2 C5:1', 'B4:2 D5:1', 'C5:3',
+  'D5:1 F5:1 A5:1', 'C5:2 A4:1', 'E5:2 D5:1', 'C5:3',
+  'A4:1 C5:1 F5:1', 'E5:2 C5:1', 'D5:1 F5:1 A5:1', 'G5:2 D5:1',
+  'A5:1 G5:1 F5:1', 'E5:2 G5:1', 'F5:2 A5:1', 'F5:3',
+];
+
+const WALTZ_LH: { bass: string; chord: string[] }[] = [
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'C3', chord: ['G3', 'C4'] },
+  { bass: 'D3', chord: ['A3', 'D4'] }, { bass: 'Bb2', chord: ['F3', 'Bb3'] },
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'C3', chord: ['G3', 'C4'] },
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'C3', chord: ['G3', 'Bb3'] },
+  { bass: 'Bb2', chord: ['F3', 'Bb3'] }, { bass: 'F2', chord: ['A3', 'C4'] },
+  { bass: 'G2', chord: ['B3', 'F4'] }, { bass: 'C3', chord: ['G3', 'C4'] },
+  { bass: 'Bb2', chord: ['F3', 'Bb3'] }, { bass: 'F2', chord: ['A3', 'C4'] },
+  { bass: 'C3', chord: ['G3', 'Bb3'] }, { bass: 'F2', chord: ['A3', 'C4'] },
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'C3', chord: ['G3', 'C4'] },
+  { bass: 'D3', chord: ['A3', 'D4'] }, { bass: 'Bb2', chord: ['F3', 'Bb3'] },
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'C3', chord: ['G3', 'C4'] },
+  { bass: 'F2', chord: ['A3', 'C4'] }, { bass: 'F2', chord: ['A3', 'C4'] },
+];
+
+function buildWaltz(): PerformanceEvent[] {
+  const take = new Take(19240);
+  const u = 0.375; // 4分音符（♩=160）
+  const bar = 3 * u;
+
+  let time = 0;
+  WALTZ_RH.forEach((spec, i) => {
+    const lh = WALTZ_LH[i];
+    take.pedalPerBar(time);
+    const vel = 0.48 + (i >= 16 ? 0.07 : 0);
+    take.seq(time, spec, u, vel, 0.9);
+    take.hit(time, [lh.bass], u * 1.6, vel - 0.06);
+    take.hit(time + u, lh.chord, u * 0.85, vel - 0.2);
+    take.hit(time + 2 * u, lh.chord, u * 0.85, vel - 0.22);
+    time += bar;
+  });
+
+  take.pedalPerBar(time);
+  take.hit(time, ['F2', 'F3', 'A3', 'C4', 'F4'], 3, 0.42);
+  take.pedal(time + 3.5, 0);
+  return take.done();
+}
+
+// ---------------------------------------------------------------------------
+// オリジナル「夏の終わりのバラード」（本アプリ書き下ろし）
+// ---------------------------------------------------------------------------
+
+const BALLAD_RH = [
+  'G4:1 A4:1 B4:1 C5:1',
+  'D5:2 A4:2',
+  'B4:1 C#5:1 D5:2',
+  'E5:3 D5:1',
+  'C5:1 B4:1 A4:1 G4:1',
+  'A4:2 F#4:2',
+  'G4:4',
+  'r:2 D5:1 E5:1',
+  'G5:1 E5:1 G5:2',
+  'F#5:2 D5:2',
+  'D5:1 E5:1 F#5:2',
+  'E5:4',
+  'E5:1 D5:1 C5:1 B4:1',
+  'A4:2 D5:2',
+  'B4:4',
+  'G4:4',
+];
+
+/** 左手の分散和音（低音・中音・高音） */
+const BALLAD_LH: string[][] = [
+  ['C3', 'G3', 'E4'], ['D3', 'A3', 'F#4'], ['B2', 'F#3', 'D4'], ['E3', 'B3', 'G4'],
+  ['C3', 'G3', 'E4'], ['D3', 'A3', 'F#4'], ['G2', 'D3', 'B3'], ['D3', 'A3', 'F#4'],
+  ['C3', 'G3', 'E4'], ['D3', 'A3', 'F#4'], ['B2', 'F#3', 'D4'], ['E3', 'B3', 'G4'],
+  ['C3', 'G3', 'E4'], ['D3', 'A3', 'F#4'], ['G2', 'D3', 'B3'], ['G2', 'D3', 'B3'],
+];
+
+function buildBallad(): PerformanceEvent[] {
+  const take = new Take(19790);
+  const u = 0.833; // 4分音符（♩=72）
+  const bar = 4 * u;
+
+  let time = 0;
+  BALLAD_RH.forEach((spec, i) => {
+    const [low, mid, high] = BALLAD_LH[i];
+    take.pedalPerBar(time);
+    // サビ（9小節目〜）で歌わせる
+    const vel = 0.46 + (i >= 8 && i < 14 ? 0.1 : 0);
+    take.seq(time, spec, u, vel, 0.96);
+    take.seq(
+      time,
+      `${low}:0.5 ${mid}:0.5 ${high}:0.5 ${mid}:0.5 ${low}:0.5 ${mid}:0.5 ${high}:0.5 ${mid}:0.5`,
+      u,
+      vel - 0.16,
+      0.9
+    );
+    time += bar;
+  });
+
+  take.pedalPerBar(time);
+  take.hit(time, ['G2', 'D3', 'G3', 'B3', 'D4', 'G4'], 5, 0.4);
+  take.pedal(time + 5.5, 0);
+  return take.done();
+}
+
 export const DEMOS: Demo[] = [
   {
     id: 'bwv846',
@@ -202,6 +807,86 @@ export const DEMOS: Demo[] = [
     note: 'パブリックドメイン',
     presetId: 'concert',
     build: buildBWV846,
+  },
+  {
+    id: 'furelise',
+    title: 'エリーゼのために WoO 59',
+    composer: 'L.v. ベートーヴェン',
+    note: 'パブリックドメイン',
+    presetId: 'concert',
+    build: buildFurElise,
+  },
+  {
+    id: 'moonlight',
+    title: 'ピアノソナタ第14番「月光」第1楽章',
+    composer: 'L.v. ベートーヴェン',
+    note: 'パブリックドメイン',
+    presetId: 'cinematic',
+    build: buildMoonlight,
+  },
+  {
+    id: 'canon',
+    title: 'カノン ニ長調',
+    composer: 'J. パッヘルベル',
+    note: 'パブリックドメイン',
+    presetId: 'concert',
+    build: buildCanon,
+  },
+  {
+    id: 'minuet',
+    title: 'メヌエット ト長調 BWV Anh.114',
+    composer: 'C. ペツォールト',
+    note: 'パブリックドメイン',
+    presetId: 'studio',
+    build: buildMinuet,
+  },
+  {
+    id: 'odetojoy',
+    title: '歓喜の歌（交響曲第9番より）',
+    composer: 'L.v. ベートーヴェン',
+    note: 'パブリックドメイン',
+    presetId: 'bright',
+    build: buildOdeToJoy,
+  },
+  {
+    id: 'twinkle',
+    title: 'きらきら星',
+    composer: 'フランス民謡',
+    note: 'パブリックドメイン',
+    presetId: 'felt',
+    build: buildTwinkle,
+  },
+  {
+    id: 'amazinggrace',
+    title: 'アメイジング・グレイス',
+    composer: '賛美歌',
+    note: 'パブリックドメイン',
+    presetId: 'warm',
+    build: buildAmazingGrace,
+  },
+  {
+    id: 'greensleeves',
+    title: 'グリーンスリーブス',
+    composer: 'イングランド民謡',
+    note: 'パブリックドメイン',
+    presetId: 'felt',
+    build: buildGreensleeves,
+  },
+  {
+    id: 'waltz',
+    title: '星降る夜のワルツ',
+    composer: 'オリジナル',
+    note: '本アプリ書き下ろし',
+    presetId: 'jazz',
+    build: buildWaltz,
+  },
+  {
+    id: 'ballad',
+    title: '夏の終わりのバラード',
+    composer: 'オリジナル',
+    note: '本アプリ書き下ろし',
+    presetId: 'warm',
+    build: buildBallad,
   },
   {
     id: 'nocturne',
