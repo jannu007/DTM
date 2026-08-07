@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Micro Sakura Studio</string>
+    <string name="title_activity_main">Micro Sakura Studio</string>
+    <string name="package_name">com.microsakurastudio.app</string>
+    <string name="custom_url_scheme">com.microsakurastudio.app</string>
+</resources>

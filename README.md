@@ -73,6 +73,36 @@ GitHub Actions ワークフロー（`.github/workflows/deploy-pages.yml`）が�
 
 料金は一切かかりません（GitHub Pages・GitHub Actions のパブリックリポジトリ無料枠のみ使用）。
 
+## Google Play への公開（Android AAB ビルド）
+
+このリポジトリには [Capacitor](https://capacitorjs.com/) で生成した `android/`
+ネイティブプロジェクトが含まれています。`.github/workflows/android-release.yml`
+（GitHub Actions、手動実行 `workflow_dispatch`）が Web アセットのビルドから
+署名済み `.aab`（Android App Bundle）の生成までを行い、ビルド成果物として
+ダウンロードできます。ローカルに Android SDK がなくても CI 上でビルドできます。
+
+事前に GitHub リポジトリの **Settings → Secrets and variables → Actions** に
+以下の Secrets を登録してください（署名鍵の作り方は
+[jannu007/GooglePlay](https://github.com/jannu007/GooglePlay) の公開ガイド参照）。
+
+- `ANDROID_KEYSTORE_BASE64` … リリース用 keystore ファイルを base64 化したもの
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+ワークフローを実行すると `micro-sakura-studio-release-aab` という Artifact に
+`app-release.aab` が生成されます。これを Google Play Console の
+「製品版」トラックにアップロードして審査に出せます。
+
+ローカルで動作確認したい場合:
+
+```bash
+npm install
+npm run build
+npx cap sync android
+npx cap open android   # Android Studio が必要
+```
+
 ## Windows デスクトップアプリ化（Electron / 無料）
 
 ```bash
