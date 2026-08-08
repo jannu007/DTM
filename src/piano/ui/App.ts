@@ -64,6 +64,8 @@ export class PianoApp {
   private heldComputerKeys = new Map<string, number>();
 
   private lastSequence: { events: PerformanceEvent[]; name: string } | null = null;
+  /** デモ再生前の音色（再生後に戻すため） */
+  private demoRestore: { settings: PianoSettings; presetId: string; snapshot: string } | null = null;
   private exporting = false;
 
   private statusEl!: HTMLElement;
@@ -810,7 +812,31 @@ export class PianoApp {
     this.sustainLatched = false;
     this.sustainHeld = false;
     this.updateSustainFromInputs();
+    this.resetTransport();
+    this.restoreDemoPreset();
     this.flashNowPlaying('すべての音を停止しました');
+  }
+
+  /** 再生位置の表示を初期状態に戻す */
+  private resetTransport() {
+    this.transportEl.textContent = '00:00';
+  }
+
+  /**
+   * デモ再生のために切り替えた音色を元に戻す。
+   * 再生中に自分でパラメータを触っていた場合は、その状態を尊重して戻さない。
+   */
+  private restoreDemoPreset() {
+    const saved = this.demoRestore;
+    this.demoRestore = null;
+    if (!saved || JSON.stringify(this.settings) !== saved.snapshot) return;
+
+    this.settings = saved.settings;
+    this.ui.presetId = saved.presetId;
+    this.commit();
+    const select = this.root.querySelector('.preset-select') as HTMLSelectElement | null;
+    if (select) select.value = saved.presetId;
+    if (this.activeTab === 'tone' || this.activeTab === 'space') this.showTab(this.activeTab);
   }
 
   private async connectMidi() {
@@ -844,6 +870,7 @@ export class PianoApp {
       if (this.recorder.recording) {
         this.recorder.stop(this.engine.now);
         this.lastSequence = { events: this.recorder.events, name: 'recording' };
+        this.resetTransport();
         this.flashNowPlaying('録音を停止しました');
       } else {
         this.player.stop();
@@ -866,7 +893,13 @@ export class PianoApp {
     const demo = DEMOS.find((d) => d.id === id);
     if (!demo) return;
     if (this.ui.useDemoPreset && demo.presetId !== this.ui.presetId) {
+      // 再生後に戻すため、切り替える前の音色を覚えておく
+      // （デモを続けて再生したときは最初の音色を保持する）
+      const previous = this.demoRestore
+        ? { settings: this.demoRestore.settings, presetId: this.demoRestore.presetId }
+        : { settings: { ...this.settings }, presetId: this.ui.presetId };
       this.selectPreset(demo.presetId);
+      this.demoRestore = { ...previous, snapshot: JSON.stringify(this.settings) };
     }
     void this.ensureAudio().then(() => {
       const events = demo.build();
@@ -890,6 +923,8 @@ export class PianoApp {
     this.player.onEnd = () => {
       this.keyboard.clearAll();
       this.view.allOff();
+      this.resetTransport();
+      this.restoreDemoPreset();
       this.flashNowPlaying('再生が終了しました');
     };
     this.player.play(events);
@@ -900,6 +935,8 @@ export class PianoApp {
     this.player.stop();
     this.keyboard.clearAll();
     this.view.allOff();
+    this.resetTransport();
+    this.restoreDemoPreset();
   }
 
   private exportEvents(): { events: PerformanceEvent[]; name: string } | null {
