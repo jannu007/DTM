@@ -672,8 +672,40 @@ html, body {
   .octave-label { display: none; }
 }
 
-@media (orientation: landscape) and (max-height: 520px) {
-  .main-area { grid-template-rows: minmax(70px, 16vh) minmax(0, 1fr); }
+/* 横向きのスマホ：縦に積むと操作パネルが潰れるので、左右に並べて高さを確保する */
+@media (orientation: landscape) and (max-height: 600px) {
+  :root { --keybed-h: clamp(74px, 26vh, 132px); }
+
+  .main-area {
+    grid-template-columns: minmax(0, 1fr) clamp(230px, 38vw, 380px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .stage {
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  .topbar { padding: 0.3rem 0.7rem; }
+  .brand-mark { width: 26px; height: 26px; }
+  .brand-text small { display: none; }
+  .status { display: none; }
+
+  .tab { padding: 0.45rem 0.2rem; font-size: 0.78rem; }
+  .panel-body { padding: 0.6rem 0.7rem 1.4rem; }
+  .panel-title { margin: 0.9rem 0 0.45rem; }
+  .ctl-grid { gap: 0.7rem; }
+
+  .stage-overlay { padding: 0.5rem 0.7rem; }
+  .pedal-bar { padding: 0.3rem 0.5rem; }
+  .keybed-scroll { padding-bottom: 6px; }
+}
+
+/* 横向きでもごく低い画面（折りたたみ端末など）はステージを畳んで操作を優先 */
+@media (orientation: landscape) and (max-height: 380px) {
+  .stage { display: none; }
+  .main-area { grid-template-columns: minmax(0, 1fr); }
+  :root { --keybed-h: clamp(68px, 24vh, 100px); }
 }
 
 .help-card .help-small { font-size: 0.72rem; color: var(--text-dim); }
