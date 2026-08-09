@@ -1,277 +1,431 @@
-function buildReverbImpulse(ctx: AudioContext, seconds = 2.5, decay = 3): AudioBuffer {
-  const rate = ctx.sampleRate;
-  const length = Math.max(1, Math.floor(rate * seconds));
-  const impulse = ctx.createBuffer(2, length, rate);
-  for (let ch = 0; ch < 2; ch++) {
-    const data = impulse.getChannelData(ch);
-    for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
-    }
-  }
-  return impulse;
+/**
+ * Micro Sakura Studio — マスターバス／センドエフェクト
+ *
+ * リアルタイム再生用の AudioContext と、書き出し用の OfflineAudioContext の
+ * 両方で同じグラフを構築できるように BaseAudioContext を受け取る設計にしています。
+ */
+import workletUrl from './worklets/synth-processor.js?url';
+import recorderUrl from './worklets/recorder-processor.js?url';
+
+export interface ReverbSettings {
+  mix: number;      // 0..1
+  size: number;     // 0.2..8 秒
+  damp: number;     // 0..1（高域減衰）
+  preDelay: number; // 秒
+  width: number;    // 0..1
 }
 
-export function buildNoiseBuffer(ctx: AudioContext, seconds = 2): AudioBuffer {
-  const rate = ctx.sampleRate;
-  const length = Math.floor(rate * seconds);
-  const buf = ctx.createBuffer(1, length, rate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+export interface DelaySettings {
+  mix: number;
+  sync: boolean;
+  division: number; // 拍数（sync=true）
+  time: number;     // 秒（sync=false）
+  feedback: number; // 0..0.95
+  tone: number;     // 0..1（フィードバックのローパス）
+  pingPong: boolean;
+}
+
+export interface ChorusSettings {
+  mix: number;
+  rate: number;  // Hz
+  depth: number; // 0..1
+  spread: number; // 0..1
+}
+
+export interface MasterSettings {
+  volume: number;
+  drive: number;
+  eqLow: number;
+  eqMid: number;
+  eqMidFreq: number;
+  eqHigh: number;
+  compress: number; // 0..1
+  limiter: boolean;
+  reverb: ReverbSettings;
+  delay: DelaySettings;
+  chorus: ChorusSettings;
+}
+
+export function defaultMasterSettings(): MasterSettings {
+  return {
+    volume: 0.62,
+    drive: 0,
+    eqLow: 0,
+    eqMid: 0,
+    eqMidFreq: 1000,
+    eqHigh: 0,
+    compress: 0.25,
+    limiter: true,
+    reverb: { mix: 0.32, size: 2.4, damp: 0.45, preDelay: 0.02, width: 0.9 },
+    delay: { mix: 0.28, sync: true, division: 0.75, time: 0.35, feedback: 0.38, tone: 0.55, pingPong: true },
+    chorus: { mix: 0.3, rate: 0.55, depth: 0.55, spread: 0.8 },
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* インパルス応答の生成（初期反射＋指数減衰＋高域ダンピング）           */
+/* ------------------------------------------------------------------ */
+export function buildReverbImpulse(ctx: BaseAudioContext, size: number, damp: number, width: number): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const seconds = Math.max(0.15, Math.min(9, size));
+  const length = Math.max(64, Math.floor(sr * seconds));
+  const buf = ctx.createBuffer(2, length, sr);
+  // 初期反射（部屋の大きさに比例したタップ位置）
+  const taps = [0.0043, 0.0097, 0.0151, 0.0209, 0.0277, 0.0331, 0.0413, 0.0492];
+  const dampCoefBase = 0.35 + (1 - damp) * 0.6;
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    let lp = 0;
+    const sign = ch === 0 ? 1 : -1;
+    for (let i = 0; i < length; i++) {
+      const t = i / length;
+      // 減衰カーブ（後半ほど密度を上げるためベロシティ・ノイズを整形）
+      const decay = Math.pow(1 - t, 2.4 + damp * 2);
+      let s = (Math.random() * 2 - 1) * decay;
+      // 時間経過とともに高域を落とす（空気吸収のモデル化）
+      const g = Math.max(0.02, dampCoefBase * (1 - t * damp));
+      lp += g * (s - lp);
+      s = lp;
+      data[i] = s;
+    }
+    // 初期反射を重ねる
+    for (let k = 0; k < taps.length; k++) {
+      const idx = Math.floor(taps[k] * (0.6 + seconds * 0.35) * sr) + (ch === 0 ? 0 : 13);
+      if (idx < length) data[idx] += sign * (0.7 - k * 0.075) * (k % 2 === 0 ? 1 : -1);
+    }
+    // 立ち上がりのクリック防止
+    const fade = Math.min(64, length);
+    for (let i = 0; i < fade; i++) data[i] *= i / fade;
+  }
+
+  // ステレオ幅（0 でモノラル化）
+  if (width < 1) {
+    const l = buf.getChannelData(0);
+    const r = buf.getChannelData(1);
+    for (let i = 0; i < length; i++) {
+      const m = (l[i] + r[i]) * 0.5;
+      l[i] = m + (l[i] - m) * width;
+      r[i] = m + (r[i] - m) * width;
+    }
+  }
+
+  // ノーマライズ（音量が音色設定で暴れないように）
+  let peak = 0;
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < length; i++) peak = Math.max(peak, Math.abs(d[i]));
+  }
+  if (peak > 0) {
+    const gain = 0.6 / peak;
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < length; i++) d[i] *= gain;
+    }
+  }
   return buf;
 }
 
 function makeDriveCurve(amount: number): Float32Array {
-  const n = 1024;
+  const n = 2048;
   const curve = new Float32Array(n);
-  const k = amount * 100;
+  const k = amount * amount * 120;
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1;
-    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+    curve[i] = k > 0 ? Math.tanh(x * (1 + k)) / Math.tanh(1 + k) : x;
   }
   return curve;
 }
 
+let workletModulePromise: WeakMap<BaseAudioContext, Promise<void>> | null = null;
+
+/** シンセ／レコーダーの AudioWorklet モジュールを（コンテキストごとに1回だけ）読み込む */
+export function loadWorklets(ctx: BaseAudioContext): Promise<void> {
+  if (!workletModulePromise) workletModulePromise = new WeakMap();
+  let p = workletModulePromise.get(ctx);
+  if (!p) {
+    p = (async () => {
+      await ctx.audioWorklet.addModule(workletUrl);
+      try {
+        await ctx.audioWorklet.addModule(recorderUrl);
+      } catch {
+        /* 録音用ワークレットが読めなくても再生は継続できる */
+      }
+    })();
+    workletModulePromise.set(ctx, p);
+  }
+  return p;
+}
+
 export class AudioEngine {
-  ctx: AudioContext;
-  noiseBuffer: AudioBuffer;
+  ctx: BaseAudioContext;
+  settings: MasterSettings;
 
+  /** 各トラックの出力先（ドライ信号） */
   sumBus: GainNode;
-  masterGain: GainNode;
-  compressor: DynamicsCompressorNode;
-  eqLow: BiquadFilterNode;
-  eqMid: BiquadFilterNode;
-  eqHigh: BiquadFilterNode;
-
+  /** センド */
   reverbSend: GainNode;
-  reverbReturn: GainNode;
-  convolver: ConvolverNode;
-
   delaySend: GainNode;
-  delayReturn: GainNode;
-  delayNode: DelayNode;
-  delayFeedback: GainNode;
-
   chorusSend: GainNode;
-  chorusReturn: GainNode;
-  chorusDelayL: DelayNode;
-  chorusDelayR: DelayNode;
-  chorusLfo: OscillatorNode;
-  chorusLfoGain: GainNode;
 
-  masterDrive: WaveShaperNode;
+  private convolver: ConvolverNode;
+  private reverbPre: DelayNode;
+  private reverbReturn: GainNode;
 
-  recDest: MediaStreamAudioDestinationNode;
-  recProcessor: ScriptProcessorNode | null = null;
-  recording = false;
-  recChunksL: Float32Array[] = [];
-  recChunksR: Float32Array[] = [];
+  private delayL: DelayNode;
+  private delayR: DelayNode;
+  private delayFb: GainNode;
+  private delayTone: BiquadFilterNode;
+  private delayReturn: GainNode;
+  private delayMergeL: StereoPannerNode;
+  private delayMergeR: StereoPannerNode;
+  private delayCross: GainNode;
 
+  private chorusVoices: { delay: DelayNode; lfo: OscillatorNode; depth: GainNode; pan: StereoPannerNode }[] = [];
+  private chorusReturn: GainNode;
+
+  private driveNode: WaveShaperNode;
+  private eqLow: BiquadFilterNode;
+  private eqMid: BiquadFilterNode;
+  private eqHigh: BiquadFilterNode;
+  private comp: DynamicsCompressorNode;
+  private limiter: DynamicsCompressorNode;
+  masterGain: GainNode;
   analyser: AnalyserNode;
 
-  constructor() {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  private recorderNode: AudioWorkletNode | null = null;
+  private recChunks: Float32Array[][] = [];
+  recording = false;
+
+  bpm = 120;
+
+  constructor(ctx: BaseAudioContext, settings: MasterSettings = defaultMasterSettings()) {
     this.ctx = ctx;
-    this.noiseBuffer = buildNoiseBuffer(ctx);
+    this.settings = settings;
 
     this.sumBus = ctx.createGain();
-    this.masterDrive = ctx.createWaveShaper();
-    this.masterDrive.curve = makeDriveCurve(0) as Float32Array<ArrayBuffer>;
-    this.eqLow = ctx.createBiquadFilter();
-    this.eqLow.type = 'lowshelf';
-    this.eqLow.frequency.value = 200;
-    this.eqMid = ctx.createBiquadFilter();
-    this.eqMid.type = 'peaking';
-    this.eqMid.frequency.value = 1000;
-    this.eqMid.Q.value = 0.7;
-    this.eqHigh = ctx.createBiquadFilter();
-    this.eqHigh.type = 'highshelf';
-    this.eqHigh.frequency.value = 4000;
-
-    this.compressor = ctx.createDynamicsCompressor();
-    this.compressor.threshold.value = -12;
-    this.compressor.ratio.value = 3;
-    this.compressor.attack.value = 0.003;
-    this.compressor.release.value = 0.25;
-
-    this.masterGain = ctx.createGain();
-    this.masterGain.gain.value = 0.85;
-
-    this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = 2048;
-
-    // reverb bus
     this.reverbSend = ctx.createGain();
-    this.reverbSend.gain.value = 0;
-    this.convolver = ctx.createConvolver();
-    this.convolver.buffer = buildReverbImpulse(ctx);
-    this.reverbReturn = ctx.createGain();
-    this.reverbReturn.gain.value = 1;
-
-    // delay bus
     this.delaySend = ctx.createGain();
-    this.delaySend.gain.value = 0;
-    this.delayNode = ctx.createDelay(2);
-    this.delayNode.delayTime.value = 0.32;
-    this.delayFeedback = ctx.createGain();
-    this.delayFeedback.gain.value = 0.35;
-    this.delayReturn = ctx.createGain();
-    this.delayReturn.gain.value = 1;
-
-    // chorus bus (stereo modulated short delay)
     this.chorusSend = ctx.createGain();
-    this.chorusSend.gain.value = 0;
-    this.chorusDelayL = ctx.createDelay(0.05);
-    this.chorusDelayL.delayTime.value = 0.012;
-    this.chorusDelayR = ctx.createDelay(0.05);
-    this.chorusDelayR.delayTime.value = 0.017;
-    this.chorusLfo = ctx.createOscillator();
-    this.chorusLfo.frequency.value = 0.6;
-    this.chorusLfoGain = ctx.createGain();
-    this.chorusLfoGain.gain.value = 0.004;
-    this.chorusLfo.connect(this.chorusLfoGain);
-    this.chorusLfoGain.connect(this.chorusDelayL.delayTime);
-    this.chorusLfoGain.connect(this.chorusDelayR.delayTime);
-    this.chorusLfo.start();
-    this.chorusReturn = ctx.createGain();
-    this.chorusReturn.gain.value = 1;
 
-    // wire graph
-    this.sumBus.connect(this.masterDrive);
-    this.masterDrive.connect(this.eqLow);
-    this.eqLow.connect(this.eqMid);
-    this.eqMid.connect(this.eqHigh);
-    this.eqHigh.connect(this.compressor);
-    this.compressor.connect(this.masterGain);
-    this.masterGain.connect(this.analyser);
-    this.analyser.connect(ctx.destination);
-
-    this.reverbSend.connect(this.convolver);
+    // --- リバーブ ---
+    this.reverbPre = ctx.createDelay(0.5);
+    this.convolver = ctx.createConvolver();
+    this.convolver.normalize = false;
+    this.reverbReturn = ctx.createGain();
+    this.reverbSend.connect(this.reverbPre);
+    this.reverbPre.connect(this.convolver);
     this.convolver.connect(this.reverbReturn);
     this.reverbReturn.connect(this.sumBus);
 
-    this.delaySend.connect(this.delayNode);
-    this.delayNode.connect(this.delayFeedback);
-    this.delayFeedback.connect(this.delayNode);
-    this.delayNode.connect(this.delayReturn);
+    // --- ディレイ（ピンポン） ---
+    this.delayL = ctx.createDelay(4);
+    this.delayR = ctx.createDelay(4);
+    this.delayTone = ctx.createBiquadFilter();
+    this.delayTone.type = 'lowpass';
+    this.delayFb = ctx.createGain();
+    this.delayCross = ctx.createGain();
+    this.delayReturn = ctx.createGain();
+    this.delayMergeL = ctx.createStereoPanner();
+    this.delayMergeL.pan.value = -1;
+    this.delayMergeR = ctx.createStereoPanner();
+    this.delayMergeR.pan.value = 1;
+
+    this.delaySend.connect(this.delayL);
+    this.delayL.connect(this.delayTone);
+    this.delayTone.connect(this.delayR);
+    this.delayR.connect(this.delayFb);
+    this.delayFb.connect(this.delayL);
+    this.delayL.connect(this.delayMergeL);
+    this.delayR.connect(this.delayMergeR);
+    // ピンポンを切ると通常のステレオディレイになるよう右チャンネルにも直接送る
+    this.delaySend.connect(this.delayCross);
+    this.delayCross.connect(this.delayR);
+    this.delayMergeL.connect(this.delayReturn);
+    this.delayMergeR.connect(this.delayReturn);
     this.delayReturn.connect(this.sumBus);
 
-    this.chorusSend.connect(this.chorusDelayL);
-    this.chorusSend.connect(this.chorusDelayR);
-    this.chorusDelayL.connect(this.chorusReturn);
-    this.chorusDelayR.connect(this.chorusReturn);
+    // --- コーラス（3 ボイス／位相をずらした LFO） ---
+    this.chorusReturn = ctx.createGain();
+    const baseTimes = [0.0091, 0.0134, 0.0177];
+    const rates = [1, 1.37, 0.79];
+    const pans = [-1, 0, 1];
+    for (let i = 0; i < 3; i++) {
+      const delay = ctx.createDelay(0.08);
+      delay.delayTime.value = baseTimes[i];
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.5 * rates[i];
+      const depth = ctx.createGain();
+      depth.gain.value = 0.002;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = pans[i];
+      lfo.connect(depth);
+      depth.connect(delay.delayTime);
+      this.chorusSend.connect(delay);
+      delay.connect(pan);
+      pan.connect(this.chorusReturn);
+      lfo.start();
+      this.chorusVoices.push({ delay, lfo, depth, pan });
+    }
     this.chorusReturn.connect(this.sumBus);
 
-    this.recDest = ctx.createMediaStreamDestination();
+    // --- マスターチェーン ---
+    this.driveNode = ctx.createWaveShaper();
+    this.driveNode.oversample = '4x';
+    this.eqLow = ctx.createBiquadFilter();
+    this.eqLow.type = 'lowshelf';
+    this.eqLow.frequency.value = 180;
+    this.eqMid = ctx.createBiquadFilter();
+    this.eqMid.type = 'peaking';
+    this.eqMid.Q.value = 0.9;
+    this.eqHigh = ctx.createBiquadFilter();
+    this.eqHigh.type = 'highshelf';
+    this.eqHigh.frequency.value = 4500;
+    this.comp = ctx.createDynamicsCompressor();
+    this.limiter = ctx.createDynamicsCompressor();
+    this.limiter.threshold.value = -1.2;
+    this.limiter.knee.value = 0;
+    this.limiter.ratio.value = 20;
+    this.limiter.attack.value = 0.001;
+    this.limiter.release.value = 0.06;
+    this.masterGain = ctx.createGain();
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = 2048;
+    this.analyser.smoothingTimeConstant = 0.75;
+
+    this.sumBus.connect(this.driveNode);
+    this.driveNode.connect(this.eqLow);
+    this.eqLow.connect(this.eqMid);
+    this.eqMid.connect(this.eqHigh);
+    this.eqHigh.connect(this.comp);
+    this.comp.connect(this.limiter);
+    this.limiter.connect(this.masterGain);
+    this.masterGain.connect(this.analyser);
+    this.analyser.connect(ctx.destination);
+
+    this.applySettings(settings, true);
+  }
+
+  get realtimeCtx(): AudioContext | null {
+    return typeof AudioContext !== 'undefined' && this.ctx instanceof AudioContext ? this.ctx : null;
   }
 
   resume() {
-    if (this.ctx.state !== 'running') this.ctx.resume();
+    const rt = this.realtimeCtx;
+    if (rt && rt.state !== 'running') void rt.resume();
   }
 
-  setMasterVolume(v: number) {
-    this.masterGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.01);
+  setTempo(bpm: number) {
+    this.bpm = bpm;
+    this.updateDelayTime();
   }
 
-  setEQ(low: number, mid: number, high: number) {
-    this.eqLow.gain.setTargetAtTime(low, this.ctx.currentTime, 0.01);
-    this.eqMid.gain.setTargetAtTime(mid, this.ctx.currentTime, 0.01);
-    this.eqHigh.gain.setTargetAtTime(high, this.ctx.currentTime, 0.01);
-  }
-
-  setDelayTime(sec: number) {
-    this.delayNode.delayTime.setTargetAtTime(sec, this.ctx.currentTime, 0.01);
-  }
-
-  setDelayFeedback(fb: number) {
-    this.delayFeedback.gain.setTargetAtTime(fb, this.ctx.currentTime, 0.01);
-  }
-
-  // --- Recording (raw PCM capture -> WAV encode) ---
-  startRecording() {
-    if (this.recording) return;
-    this.recording = true;
-    this.recChunksL = [];
-    this.recChunksR = [];
-    const bufSize = 4096;
-    this.recProcessor = this.ctx.createScriptProcessor(bufSize, 2, 2);
-    this.masterGain.connect(this.recProcessor);
-    this.recProcessor.connect(this._silentSink());
-    this.recProcessor.onaudioprocess = (e) => {
-      if (!this.recording) return;
-      const l = e.inputBuffer.getChannelData(0);
-      const r = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : l;
-      this.recChunksL.push(new Float32Array(l));
-      this.recChunksR.push(new Float32Array(r));
+  /** 設定をグラフへ反映。immediate=true なら補間なしで即時適用（初期化・オフライン用） */
+  applySettings(s: MasterSettings, immediate = false) {
+    this.settings = s;
+    const t = this.ctx.currentTime;
+    const set = (p: AudioParam, v: number) => {
+      if (immediate) p.setValueAtTime(v, t);
+      else p.setTargetAtTime(v, t, 0.02);
     };
-  }
 
-  private _silentGain: GainNode | null = null;
-  private _silentSink(): GainNode {
-    if (!this._silentGain) {
-      this._silentGain = this.ctx.createGain();
-      this._silentGain.gain.value = 0;
-      this._silentGain.connect(this.ctx.destination);
+    set(this.masterGain.gain, s.volume);
+    this.driveNode.curve = makeDriveCurve(s.drive) as Float32Array<ArrayBuffer>;
+    set(this.eqLow.gain, s.eqLow);
+    set(this.eqMid.gain, s.eqMid);
+    set(this.eqMid.frequency, s.eqMidFreq);
+    set(this.eqHigh.gain, s.eqHigh);
+
+    // コンプレッサー（0 = ほぼバイパス、1 = 強め）
+    const c = s.compress;
+    set(this.comp.threshold, -6 - c * 22);
+    set(this.comp.ratio, 1 + c * 7);
+    set(this.comp.knee, 30 - c * 24);
+    set(this.comp.attack, 0.006 - c * 0.004);
+    set(this.comp.release, 0.25);
+    set(this.limiter.threshold, s.limiter ? -1.2 : 0);
+
+    set(this.reverbSend.gain, 1);
+    set(this.reverbReturn.gain, s.reverb.mix * 1.5);
+    set(this.reverbPre.delayTime, Math.min(0.45, s.reverb.preDelay));
+
+    set(this.delayReturn.gain, s.delay.mix * 1.2);
+    set(this.delayFb.gain, Math.min(0.92, s.delay.feedback));
+    set(this.delayTone.frequency, 400 + s.delay.tone * 12000);
+    set(this.delayCross.gain, s.delay.pingPong ? 0 : 1);
+    this.updateDelayTime(immediate);
+
+    set(this.chorusReturn.gain, s.chorus.mix * 1.3);
+    for (let i = 0; i < this.chorusVoices.length; i++) {
+      const v = this.chorusVoices[i];
+      set(v.lfo.frequency, s.chorus.rate * [1, 1.37, 0.79][i]);
+      set(v.depth.gain, 0.0006 + s.chorus.depth * 0.004);
+      set(v.pan.pan, [-1, 0, 1][i] * s.chorus.spread);
     }
-    return this._silentGain;
   }
 
-  stopRecording(): Blob | null {
-    if (!this.recording) return null;
+  private updateDelayTime(immediate = false) {
+    const s = this.settings.delay;
+    const seconds = s.sync ? (60 / this.bpm) * Math.max(0.0625, s.division) : s.time;
+    const clamped = Math.max(0.005, Math.min(3.9, seconds));
+    const t = this.ctx.currentTime;
+    for (const d of [this.delayL, this.delayR]) {
+      if (immediate) d.delayTime.setValueAtTime(clamped, t);
+      else d.delayTime.setTargetAtTime(clamped, t, 0.05);
+    }
+  }
+
+  /** リバーブのインパルス応答を再生成（size / damp / width 変更時） */
+  rebuildReverb() {
+    const s = this.settings.reverb;
+    this.convolver.buffer = buildReverbImpulse(this.ctx, s.size, s.damp, s.width);
+  }
+
+  // ------------------------------------------------------------------
+  // リアルタイム録音（AudioWorklet ベース）
+  // ------------------------------------------------------------------
+  startRecording(): boolean {
+    const rt = this.realtimeCtx;
+    if (!rt || this.recording) return false;
+    try {
+      this.recorderNode = new AudioWorkletNode(rt, 'mss-recorder', { numberOfInputs: 1, numberOfOutputs: 0, channelCount: 2 });
+    } catch {
+      return false;
+    }
+    this.recChunks = [];
+    this.recorderNode.port.onmessage = (e) => {
+      if (e.data?.type === 'chunk') this.recChunks.push(e.data.channels as Float32Array[]);
+    };
+    this.masterGain.connect(this.recorderNode);
+    this.recorderNode.port.postMessage({ type: 'start' });
+    this.recording = true;
+    return true;
+  }
+
+  stopRecording(): { channels: Float32Array[]; sampleRate: number } | null {
+    if (!this.recording || !this.recorderNode) return null;
     this.recording = false;
-    if (this.recProcessor) {
-      this.masterGain.disconnect(this.recProcessor);
-      this.recProcessor.disconnect();
-      this.recProcessor = null;
+    this.recorderNode.port.postMessage({ type: 'stop' });
+    try {
+      this.masterGain.disconnect(this.recorderNode);
+    } catch {
+      /* すでに切断済み */
     }
-    if (this.recChunksL.length === 0) return null;
-    const totalLen = this.recChunksL.reduce((s, a) => s + a.length, 0);
-    const left = new Float32Array(totalLen);
-    const right = new Float32Array(totalLen);
+    this.recorderNode.disconnect();
+    this.recorderNode = null;
+
+    if (this.recChunks.length === 0) return null;
+    const total = this.recChunks.reduce((sum, c) => sum + c[0].length, 0);
+    const left = new Float32Array(total);
+    const right = new Float32Array(total);
     let off = 0;
-    for (let i = 0; i < this.recChunksL.length; i++) {
-      left.set(this.recChunksL[i], off);
-      right.set(this.recChunksR[i], off);
-      off += this.recChunksL[i].length;
+    for (const chunk of this.recChunks) {
+      left.set(chunk[0], off);
+      right.set(chunk[1] ?? chunk[0], off);
+      off += chunk[0].length;
     }
-    return encodeWav([left, right], this.ctx.sampleRate);
+    this.recChunks = [];
+    return { channels: [left, right], sampleRate: this.ctx.sampleRate };
   }
-}
-
-export function encodeWav(channels: Float32Array[], sampleRate: number): Blob {
-  const numChannels = channels.length;
-  const numFrames = channels[0].length;
-  const bytesPerSample = 2;
-  const blockAlign = numChannels * bytesPerSample;
-  const dataSize = numFrames * blockAlign;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  function writeString(offset: number, str: string) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  }
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  let offset = 44;
-  for (let i = 0; i < numFrames; i++) {
-    for (let ch = 0; ch < numChannels; ch++) {
-      let s = Math.max(-1, Math.min(1, channels[ch][i]));
-      s = s < 0 ? s * 0x8000 : s * 0x7fff;
-      view.setInt16(offset, s, true);
-      offset += 2;
-    }
-  }
-  return new Blob([buffer], { type: 'audio/wav' });
 }

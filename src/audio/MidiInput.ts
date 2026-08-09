@@ -1,21 +1,33 @@
+/**
+ * Micro Sakura Studio — 入力（Web MIDI / PCキーボード）
+ */
 export type NoteHandler = (note: number, velocity: number) => void;
 
+export interface ControlHandlers {
+  onNoteOn: NoteHandler;
+  onNoteOff: (note: number) => void;
+  onPitchBend?: (value: number) => void; // -1..1
+  onModWheel?: (value: number) => void;  // 0..1
+  onSustain?: (on: boolean) => void;
+  onProgramChange?: (program: number) => void;
+}
+
 export class MidiInput {
-  private onNoteOn: NoteHandler;
-  private onNoteOff: NoteHandler;
-  access: any | null = null;
+  private handlers: ControlHandlers;
+  access: MIDIAccess | null = null;
   connectedNames: string[] = [];
   onDevicesChanged: (() => void) | null = null;
+  supported = false;
 
-  constructor(onNoteOn: NoteHandler, onNoteOff: NoteHandler) {
-    this.onNoteOn = onNoteOn;
-    this.onNoteOff = onNoteOff;
+  constructor(handlers: ControlHandlers) {
+    this.handlers = handlers;
   }
 
   async init(): Promise<boolean> {
     if (!('requestMIDIAccess' in navigator)) return false;
+    this.supported = true;
     try {
-      const access = await (navigator as any).requestMIDIAccess();
+      const access = await navigator.requestMIDIAccess();
       this.access = access;
       this.attachAll();
       access.onstatechange = () => {
@@ -32,27 +44,47 @@ export class MidiInput {
   private attachAll() {
     if (!this.access) return;
     this.connectedNames = [];
-    for (const input of this.access.inputs.values()) {
-      input.onmidimessage = (e: any) => this.handleMessage(e);
+    this.access.inputs.forEach((input) => {
+      input.onmidimessage = (e) => this.handleMessage(e as MIDIMessageEvent);
       this.connectedNames.push(input.name ?? 'MIDI Device');
-    }
+    });
   }
 
-  private handleMessage(e: any) {
+  private handleMessage(e: MIDIMessageEvent) {
     const data = e.data;
     if (!data || data.length < 2) return;
     const status = data[0] & 0xf0;
-    const note = data[1];
-    const vel = data.length > 2 ? data[2] : 0;
-    if (status === 0x90 && vel > 0) {
-      this.onNoteOn(note, vel / 127);
-    } else if (status === 0x80 || (status === 0x90 && vel === 0)) {
-      this.onNoteOff(note, 0);
+    const d1 = data[1];
+    const d2 = data.length > 2 ? data[2] : 0;
+
+    switch (status) {
+      case 0x90:
+        if (d2 > 0) this.handlers.onNoteOn(d1, d2 / 127);
+        else this.handlers.onNoteOff(d1);
+        break;
+      case 0x80:
+        this.handlers.onNoteOff(d1);
+        break;
+      case 0xe0: {
+        const value = ((d2 << 7) | d1) / 8192 - 1;
+        this.handlers.onPitchBend?.(Math.max(-1, Math.min(1, value)));
+        break;
+      }
+      case 0xb0:
+        if (d1 === 1) this.handlers.onModWheel?.(d2 / 127);
+        else if (d1 === 64) this.handlers.onSustain?.(d2 >= 64);
+        else if (d1 === 123 || d1 === 120) this.handlers.onSustain?.(false);
+        break;
+      case 0xc0:
+        this.handlers.onProgramChange?.(d1);
+        break;
+      default:
+        break;
     }
   }
 }
 
-// Computer-keyboard "piano" mapping (2-row layout like most web synths)
+/* PCキーボードの2段配置（下段 = 基準オクターブ、上段 = 1オクターブ上） */
 const KEY_ORDER = [
   'KeyZ', 'KeyS', 'KeyX', 'KeyD', 'KeyC', 'KeyV', 'KeyG', 'KeyB', 'KeyH', 'KeyN', 'KeyJ', 'KeyM',
   'Comma', 'KeyL', 'Period', 'Semicolon', 'Slash',
@@ -61,51 +93,75 @@ const KEY_ORDER = [
 ];
 
 export class ComputerKeyboard {
-  private onNoteOn: NoteHandler;
-  private onNoteOff: NoteHandler;
-  private octaveBase = 60; // C4
-  private held: Set<string> = new Set();
+  private handlers: ControlHandlers;
+  octaveBase = 60; // C4
+  velocity = 0.85;
+  private held = new Set<string>();
+  enabled = true;
   onOctaveChange: ((base: number) => void) | null = null;
+  onNoteVisual: ((note: number, on: boolean) => void) | null = null;
 
-  constructor(onNoteOn: NoteHandler, onNoteOff: NoteHandler) {
-    this.onNoteOn = onNoteOn;
-    this.onNoteOff = onNoteOff;
+  constructor(handlers: ControlHandlers) {
+    this.handlers = handlers;
     window.addEventListener('keydown', this.handleDown);
     window.addEventListener('keyup', this.handleUp);
+    window.addEventListener('blur', this.releaseAll);
+  }
+
+  noteFor(code: string): number | null {
+    const idx = KEY_ORDER.indexOf(code);
+    return idx === -1 ? null : this.octaveBase - 12 + idx;
   }
 
   private handleDown = (e: KeyboardEvent) => {
-    if (e.repeat) return;
-    const target = e.target as HTMLElement;
-    if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
-    if (e.code === 'KeyZ' && e.shiftKey) return;
+    if (!this.enabled || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
+
     if (e.code === 'ArrowLeft') {
-      this.octaveBase = Math.max(24, this.octaveBase - 12);
-      this.onOctaveChange?.(this.octaveBase);
+      this.setOctave(this.octaveBase - 12);
       return;
     }
     if (e.code === 'ArrowRight') {
-      this.octaveBase = Math.min(96, this.octaveBase + 12);
-      this.onOctaveChange?.(this.octaveBase);
+      this.setOctave(this.octaveBase + 12);
       return;
     }
-    const idx = KEY_ORDER.indexOf(e.code);
-    if (idx === -1 || this.held.has(e.code)) return;
+    const note = this.noteFor(e.code);
+    if (note === null || this.held.has(e.code)) return;
+    e.preventDefault();
     this.held.add(e.code);
-    const note = this.octaveBase - 12 + idx;
-    this.onNoteOn(note, 0.85);
+    this.handlers.onNoteOn(note, this.velocity);
+    this.onNoteVisual?.(note, true);
   };
 
   private handleUp = (e: KeyboardEvent) => {
-    const idx = KEY_ORDER.indexOf(e.code);
-    if (idx === -1) return;
+    const note = this.noteFor(e.code);
+    if (note === null || !this.held.has(e.code)) return;
     this.held.delete(e.code);
-    const note = this.octaveBase - 12 + idx;
-    this.onNoteOff(note, 0);
+    this.handlers.onNoteOff(note);
+    this.onNoteVisual?.(note, false);
   };
+
+  private releaseAll = () => {
+    for (const code of [...this.held]) {
+      const note = this.noteFor(code);
+      if (note !== null) {
+        this.handlers.onNoteOff(note);
+        this.onNoteVisual?.(note, false);
+      }
+    }
+    this.held.clear();
+  };
+
+  setOctave(base: number) {
+    this.releaseAll();
+    this.octaveBase = Math.max(24, Math.min(96, base));
+    this.onOctaveChange?.(this.octaveBase);
+  }
 
   dispose() {
     window.removeEventListener('keydown', this.handleDown);
     window.removeEventListener('keyup', this.handleUp);
+    window.removeEventListener('blur', this.releaseAll);
   }
 }
