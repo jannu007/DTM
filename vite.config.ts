@@ -12,6 +12,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         // Aozora Grand Piano（グランドピアノ・/piano/ で公開）
         piano: resolve(__dirname, 'piano/index.html'),
+        // Kurogane Bass（エレキベース・/bass/ で公開）
+        bass: resolve(__dirname, 'bass/index.html'),
       },
     },
   },

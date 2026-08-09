@@ -14,7 +14,12 @@
     "piano:dev": "vite --open /piano/",
     "piano:icons": "node scripts/gen-piano-icons.mjs",
     "piano:electron": "vite build && electron electron/piano-main.cjs",
-    "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json"
+    "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json",
+    "bass:dev": "vite --open /bass/",
+    "bass:test": "node scripts/test-bass-dsp.mjs",
+    "bass:icons": "node scripts/gen-bass-icons.mjs",
+    "bass:electron": "vite build && electron electron/bass-main.cjs",
+    "bass:build:win": "vite build && electron-builder --win portable --config electron-builder.bass.json"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
