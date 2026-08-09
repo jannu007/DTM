@@ -14,7 +14,11 @@
     "piano:dev": "vite --open /piano/",
     "piano:icons": "node scripts/gen-piano-icons.mjs",
     "piano:electron": "vite build && electron electron/piano-main.cjs",
-    "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json"
+    "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json",
+    "vocal:dev": "vite --open /vocal/",
+    "vocal:icons": "node scripts/gen-vocal-icons.mjs",
+    "vocal:electron": "vite build && electron electron/vocal-main.cjs",
+    "vocal:build:win": "vite build && electron-builder --win portable --config electron-builder.vocal.json"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

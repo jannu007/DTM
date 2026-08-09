@@ -10,6 +10,11 @@ Korg microKORG 系のシンセシス（2オシレーター + フィルター + �
 > 🎹 **姉妹アプリ: [Aozora Grand Piano](PIANO.md)** … 同じリポジトリに、サンプル音源を使わない
 > 物理モデリング方式のグランドピアノ・アプリを収録しています（`/piano/` で公開、
 > 開発時は `npm run piano:dev`）。仕様と仕組みは [PIANO.md](PIANO.md) を参照してください。
+>
+> 🎤 **姉妹アプリ: [Hoshizora Vocal](VOCAL.md)** … 収録音声（ボイスバンク）を使わず、
+> 声帯と声道を計算して日本語で歌わせる歌声合成アプリです。かな歌詞をピアノロールに
+> 書くだけで歌い、伴奏つきで WAV / MIDI に書き出せます（`/vocal/` で公開、
+> 開発時は `npm run vocal:dev`）。仕様と仕組みは [VOCAL.md](VOCAL.md) を参照してください。
 
 ## 主な機能
 
