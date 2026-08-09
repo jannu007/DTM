@@ -12,6 +12,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         // Aozora Grand Piano（グランドピアノ・/piano/ で公開）
         piano: resolve(__dirname, 'piano/index.html'),
+        // Hibiki Drum Machine（ドラムマシン・/drums/ で公開）
+        drums: resolve(__dirname, 'drums/index.html'),
       },
     },
   },
