@@ -23,8 +23,13 @@
     "guitar:icons": "node scripts/gen-guitar-icons.mjs",
     "guitar:electron": "vite build && electron electron/guitar-main.cjs",
     "guitar:build:win": "vite build && electron-builder --win portable --config electron-builder.guitar.json",
+    "bass:dev": "vite --open /bass/",
+    "bass:test": "node scripts/test-bass-dsp.mjs",
+    "bass:icons": "node scripts/gen-bass-icons.mjs",
+    "bass:electron": "vite build && electron electron/bass-main.cjs",
+    "bass:build:win": "vite build && electron-builder --win portable --config electron-builder.bass.json",
     "test:audio": "node scripts/audio-smoke.mjs",
-    "test": "tsc --noEmit && vite build && node scripts/audio-smoke.mjs"
+    "test": "tsc --noEmit && vite build && node scripts/test-bass-dsp.mjs && node scripts/audio-smoke.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.1",

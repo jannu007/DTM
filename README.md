@@ -16,6 +16,9 @@
 >   `/drums/` で公開、開発時は `npm run drums:dev`
 > - 🎸 **[Takibi Guitar](GUITAR.md)** … 物理モデリング方式のギター。指板演奏・コード自動運指・
 >   自動伴奏・アンプ／エフェクトまで搭載。`/guitar/` で公開、開発時は `npm run guitar:dev`
+> - 🎸 **[Kurogane Bass](BASS.md)** … デジタル導波管方式のエレキベース。指板をタップして演奏でき、
+>   スライド・チョーキング・スラップ・フレットレスに対応。
+>   `/bass/` で公開、開発時は `npm run bass:dev`
 
 ---
 
