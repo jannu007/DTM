@@ -16,6 +16,26 @@
 >   `/drums/` で公開、開発時は `npm run drums:dev`
 > - 🎸 **[Takibi Guitar](GUITAR.md)** … 物理モデリング方式のギター。指板演奏・コード自動運指・
 >   自動伴奏・アンプ／エフェクトまで搭載。`/guitar/` で公開、開発時は `npm run guitar:dev`
+> - 🎸 **[Kurogane Bass](BASS.md)** … デジタル導波管方式のエレキベース。指板をタップして演奏でき、
+>   スライド・チョーキング・スラップ・フレットレスに対応。
+>   `/bass/` で公開、開発時は `npm run bass:dev`
+
+---
+
+## ハイライト
+
+| | |
+|---|---|
+| 🎛 **本格アナログ・シンセエンジン** | PolyBLEP によるアンチエイリアス・オシレーター、非線形ムーグ型ラダーフィルター、指数カーブ ADSR を **AudioWorklet** 上で実装。880 Hz のノコギリ波でエイリアス歪み **−40 dB** を実測（自動テストで常時検証）。 |
+| 🥁 **モデリング・ドラム音源** | キック／スネア／ハイハット／シンバル等 15 種を合成で生成。Tune / Decay / Tone / Snap / Drive でどこまでも追い込めます。 |
+| 🎚 **マルチトラック DAW** | トラックごとに音色・パターン A〜D・ミュート／ソロ／音量／パン。ピアノロールはノートの長さ変更・移動・ベロシティ編集・アンドゥに対応。 |
+| 🎼 **ソング構成** | シーンを並べて曲を組み立て（イントロ→Aメロ→サビ…）。パターン再生とソング再生を切り替え可能。 |
+| 💾 **プロ品質の書き出し** | **オフラインレンダリング**による 24bit WAV 書き出し（最大 96 kHz）。音切れが原理的に発生せず、実時間より高速。標準 MIDI ファイル書き出しにも対応。 |
+| 🎹 **多彩な入力** | 画面上の鍵盤（マルチタッチ・ベロシティ対応）、PC キーボード、**Web MIDI**（ピッチベンド／モジュレーション／サスティンペダル対応）。 |
+| 📱 **どこでも動く** | PWA としてスマホのホーム画面に追加でき、オフラインでも動作。Electron で Windows デスクトップアプリ化も可能。 |
+
+---
+---
 
 ---
 
@@ -99,9 +119,9 @@ npm run preview    # ビルド結果をローカルで確認
 
 | パス | 内容 |
 |---|---|
-| `/` | 4アプリへのリンクを並べたランディングページ |
+| `/` | 各アプリへのリンクを並べたランディングページ |
 | `/synthesizer/` | **Micro Sakura Studio（このシンセ）** |
-| `/piano/` `/drums/` `/guitar/` | 姉妹アプリ |
+| `/piano/` `/drums/` `/guitar/` `/bass/` | 姉妹アプリ |
 
 ### 自動テスト（音声の品質検証）
 
@@ -191,15 +211,16 @@ src/
     demoSong.ts             起動時デモ曲
   styles/main.css           スタジオ・ダークテーマ
 synthesizer/index.html      シンセの HTML エントリー（/synthesizer/ で公開）
-public/index.html           4アプリへのランディングページ（/ で公開）
+public/index.html           各アプリへのランディングページ（/ で公開）
 public/synthesizer/         シンセの PWA マニフェスト・アイコン・Service Worker
 scripts/audio-smoke.mjs     音声の自動検証（Playwright）
 electron/                   Windows デスクトップアプリ用エントリーポイント
 ```
 
 姉妹アプリのソースは `src/piano/`（[PIANO.md](PIANO.md)）・`src/drums/`（[DRUMS.md](DRUMS.md)）・
-`src/guitar/`（[GUITAR.md](GUITAR.md)）にあります。ビルドは4つまとめて `npm run build` で行われ、
-`dist/`（シンセ）・`dist/piano/`・`dist/drums/`・`dist/guitar/` に出力されます。
+`src/guitar/`（[GUITAR.md](GUITAR.md)）・`src/bass/`（[BASS.md](BASS.md)）にあります。
+ビルドはまとめて `npm run build` で行われ、`dist/synthesizer/`（シンセ）・`dist/piano/`・
+`dist/drums/`・`dist/guitar/`・`dist/bass/` に出力されます。
 
 ---
 

@@ -19,6 +19,8 @@ export default defineConfig({
         drums: resolve(__dirname, 'drums/index.html'),
         // Takibi Guitar（ギター・/guitar/ で公開）
         guitar: resolve(__dirname, 'guitar/index.html'),
+        // Kurogane Bass（エレキベース・/bass/ で公開）
+        bass: resolve(__dirname, 'bass/index.html'),
       },
     },
   },
