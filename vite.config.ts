@@ -14,6 +14,8 @@ export default defineConfig({
         piano: resolve(__dirname, 'piano/index.html'),
         // Hibiki Drum Machine（ドラムマシン・/drums/ で公開）
         drums: resolve(__dirname, 'drums/index.html'),
+        // Takibi Guitar（ギター・/guitar/ で公開）
+        guitar: resolve(__dirname, 'guitar/index.html'),
       },
     },
   },
