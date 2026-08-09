@@ -3,7 +3,7 @@
 **完全無料**（広告なし・課金なし・アカウント不要・通信なし）のギター・アプリです。
 サンプル音源を一切使わず、**弦の振動をその場で計算**して音を作っています。
 
-- 公開パス: `/guitar/`（同一リポジトリの [Micro Sakura Studio](README.md) / [Aozora Grand Piano](PIANO.md) の姉妹アプリ）
+- 公開パス: `/guitar/`（同一リポジトリの [Akatsuki Synth](README.md) / [Aozora Grand Piano](PIANO.md) の姉妹アプリ）
 - 開発時: `npm run guitar:dev`
 
 ---

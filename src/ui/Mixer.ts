@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — トラック・ミキサー
+ * Akatsuki Synth — トラック・ミキサー
  */
 import type { Sequencer, Track } from '../audio/Sequencer';
 import { createKnob } from './widgets';

@@ -1,9 +1,8 @@
 /**
- * Micro Sakura Studio — マスター／センドエフェクト設定パネル
+ * Akatsuki Synth — マスター／センドエフェクト設定パネル
  */
 import type { AudioEngine } from '../audio/AudioEngine';
 import { createKnob, createSelect, createToggle, moduleBox } from './widgets';
-import { createScope } from './Visualizers';
 
 const pctFmt = (v: number) => `${Math.round(v * 100)}%`;
 const dbFmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}dB`;
@@ -35,26 +34,6 @@ export function buildMasterPanel(container: HTMLElement, engine: AudioEngine, on
     if (reverbTimer) window.clearTimeout(reverbTimer);
     reverbTimer = window.setTimeout(() => engine.rebuildReverb(), 180);
   };
-
-  // ---- スコープ ----
-  const scope = createScope(engine.analyser);
-  const scopeBox = moduleBox('ANALYZER');
-  const body = scopeBox.querySelector('.module-body') as HTMLElement;
-  body.classList.add('module-body-full');
-  const toggleRow = document.createElement('div');
-  toggleRow.className = 'row';
-  let mode: 'wave' | 'spectrum' = 'wave';
-  const modeBtn = document.createElement('button');
-  modeBtn.type = 'button';
-  modeBtn.className = 'btn btn-sm';
-  modeBtn.textContent = '波形 / スペクトラム 切替';
-  modeBtn.addEventListener('click', () => {
-    mode = mode === 'wave' ? 'spectrum' : 'wave';
-    scope.setMode(mode);
-  });
-  toggleRow.appendChild(modeBtn);
-  body.append(scope.element, toggleRow);
-  grid.appendChild(scopeBox);
 
   // ---- マスター ----
   grid.appendChild(
@@ -121,9 +100,4 @@ export function buildMasterPanel(container: HTMLElement, engine: AudioEngine, on
     )
   );
 
-  return {
-    dispose() {
-      scope.stop();
-    },
-  };
 }

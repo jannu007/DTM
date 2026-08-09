@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — 音色ブラウザ（検索・カテゴリー・ユーザー音色の保存）
+ * Akatsuki Synth — 音色ブラウザ（検索・カテゴリー・ユーザー音色の保存）
  */
 import { CATEGORIES, PRESETS, clonePatch, loadUserPatches, saveUserPatches } from '../audio/presets';
 import type { Patch } from '../audio/types';

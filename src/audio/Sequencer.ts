@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — マルチトラック・シーケンサー
+ * Akatsuki Synth — マルチトラック・シーケンサー
  *
  * 各トラックは AudioWorklet（mss-synth）1インスタンスで構成され、
  * ノートイベントは「絶対時刻付き」でワークレットに送られます。
@@ -392,7 +392,7 @@ export class Sequencer {
   // ------------------------------------------------------------------
   toJSON() {
     return {
-      format: 'micro-sakura-studio',
+      format: 'akatsuki-synth',
       version: 2,
       bpm: this.bpm,
       swing: this.swing,

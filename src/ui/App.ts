@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — アプリケーション本体（画面構成とすべての配線）
+ * Akatsuki Synth — アプリケーション本体（画面構成とすべての配線）
  */
 import { AudioEngine, defaultMasterSettings, loadWorklets } from '../audio/AudioEngine';
 import { Arpeggiator } from '../audio/Arpeggiator';
@@ -17,7 +17,7 @@ import { createPianoRoll, type PianoRollHandle } from './PianoRoll';
 import { buildSongView, type SongViewHandle } from './SongView';
 import { buildSynthPanel } from './SynthPanel';
 import { buildVirtualKeyboard, type KeyboardHandle } from './Keyboard';
-import { createMeter } from './Visualizers';
+import { createAnalyzerBar, type AnalyzerBarHandle } from './Visualizers';
 import { createButton, createKnob, openModal, toast, type KnobHandle } from './widgets';
 import { demoSong } from './demoSong';
 
@@ -40,12 +40,11 @@ export class App {
   private roll: PianoRollHandle | null = null;
   private songView: SongViewHandle | null = null;
   private keyboard: KeyboardHandle | null = null;
-  private masterMeter: { element: HTMLElement; set: (v: number) => void } | null = null;
+  private analyzerBar: AnalyzerBarHandle | null = null;
   private bpmKnob: KnobHandle | null = null;
 
   private tab: CenterTab = 'synth';
   private tapTimes: number[] = [];
-  private analyserData = new Float32Array(2048);
   private autosaveTimer: number | null = null;
 
   constructor(root: HTMLElement) {
@@ -62,11 +61,12 @@ export class App {
     splash.className = 'splash';
     splash.innerHTML = `
       <div class="splash-inner">
-        <div class="splash-logo">MICRO SAKURA STUDIO</div>
+        <div class="splash-logo">AKATSUKI SYNTH</div>
         <p class="splash-sub">バーチャルアナログ・シンセサイザー / DTM ワークステーション</p>
         <ul class="splash-features">
           <li>アンチエイリアス処理済みオシレーター＆ラダーフィルターによる本格アナログサウンド</li>
           <li>マルチトラック・シーケンサー／ソング構成／WAV・MIDI 書き出し</li>
+          <li>スペクトラム＋波形を常時表示するアナライザーとステレオ・ピークメーター</li>
           <li>完全無料・オフライン動作・広告なし</li>
         </ul>
       </div>`;
@@ -191,6 +191,11 @@ export class App {
     const shell = document.createElement('div');
     shell.className = 'shell';
 
+    // マスター出力のアナライザーは画面最上部に常時表示する
+    this.analyzerBar?.stop();
+    this.analyzerBar = createAnalyzerBar(this.engine);
+    shell.appendChild(this.analyzerBar.element);
+
     shell.appendChild(this.buildHeader());
 
     const main = document.createElement('div');
@@ -272,7 +277,7 @@ export class App {
 
     const brand = document.createElement('div');
     brand.className = 'brand';
-    brand.innerHTML = '<span class="brand-mark"></span><span class="brand-name">MICRO SAKURA<br><small>STUDIO</small></span>';
+    brand.innerHTML = '<span class="brand-mark"></span><span class="brand-name">AKATSUKI<br><small>SYNTH</small></span>';
     bar.appendChild(brand);
 
     // --- トランスポート ---
@@ -374,8 +379,6 @@ export class App {
         },
       })
     );
-    this.masterMeter = createMeter();
-    master.appendChild(this.masterMeter.element);
     bar.appendChild(master);
 
     // --- ファイル操作 ---
@@ -612,7 +615,7 @@ export class App {
       btn?.classList.remove('on');
       if (result) {
         const blob = encodeWav(result.channels, result.sampleRate, 24);
-        this.download(blob, `micro-sakura-recording-${stamp()}.wav`);
+        this.download(blob, `akatsuki-recording-${stamp()}.wav`);
         toast('録音を WAV で保存しました');
       } else {
         toast('録音データがありません');
@@ -676,7 +679,7 @@ export class App {
           tail: 3.5,
         });
         const blob = audioBufferToWav(buffer, 24);
-        this.download(blob, `micro-sakura-song-${stamp()}.wav`);
+        this.download(blob, `akatsuki-song-${stamp()}.wav`);
         progress.textContent = '完了しました';
         toast('WAV を書き出しました');
         close();
@@ -692,7 +695,7 @@ export class App {
   private exportMidiFile() {
     try {
       const blob = exportMidi(this.sequencer);
-      this.download(blob, `micro-sakura-song-${stamp()}.mid`);
+      this.download(blob, `akatsuki-song-${stamp()}.mid`);
       toast('MIDI ファイルを書き出しました');
     } catch (err) {
       toast(`MIDI 書き出しに失敗しました: ${String(err)}`);
@@ -702,7 +705,7 @@ export class App {
   private saveSongFile() {
     const data = this.sequencer.toJSON();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    this.download(blob, `micro-sakura-song-${stamp()}.json`);
+    this.download(blob, `akatsuki-song-${stamp()}.json`);
     this.autosave();
     toast('曲データを保存しました');
   }
@@ -818,6 +821,13 @@ export class App {
         <li><b>LFO</b>：テンポ同期に切り替えると BPM に追従します。</li>
         <li><b>音色保存</b>：ブラウザ内に保存され、次回起動時も残ります。</li>
       </ul>
+      <h3>アナライザー</h3>
+      <ul>
+        <li>画面最上部にマスター出力を常時表示します。左のラベルをクリックすると
+          「波形＋スペクトラム → スペクトラム → 波形」の順に切り替わります（選択は記憶されます）。</li>
+        <li>右側は L / R のピークメーター。白い線はピークホールド、数値は dBFS です。
+          0.0 に近づくと赤くなるので、書き出し前の音量確認に使えます。</li>
+      </ul>
       <h3>書き出し</h3>
       <ul>
         <li><b>WAV書出</b>：オフラインレンダリングで高音質・音切れなしの WAV を生成。</li>
@@ -837,17 +847,6 @@ export class App {
     const loop = () => {
       requestAnimationFrame(loop);
       this.mixer?.updateMeters();
-      if (this.masterMeter) {
-        const analyser = this.engine.analyser;
-        if (this.analyserData.length !== analyser.fftSize) this.analyserData = new Float32Array(analyser.fftSize);
-        analyser.getFloatTimeDomainData(this.analyserData);
-        let peak = 0;
-        for (let i = 0; i < this.analyserData.length; i += 4) {
-          const v = Math.abs(this.analyserData[i]);
-          if (v > peak) peak = v;
-        }
-        this.masterMeter.set(peak);
-      }
     };
     requestAnimationFrame(loop);
   }

@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — オフライン書き出し（バウンス）
+ * Akatsuki Synth — オフライン書き出し（バウンス）
  *
  * OfflineAudioContext 上に再生時とまったく同じ音声グラフを組み直し、
  * 全ノートイベントを事前に流し込んで一気にレンダリングします。
