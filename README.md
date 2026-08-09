@@ -32,7 +32,6 @@
 | 📱 **どこでも動く** | PWA としてスマホのホーム画面に追加でき、オフラインでも動作。Electron で Windows デスクトップアプリ化も可能。 |
 
 ---
----
 
 ## 主な機能
 
@@ -96,6 +95,13 @@ npm run preview    # ビルド結果をローカルで確認
 ```
 
 `dist/` をそのまま任意の静的ホスティング（GitHub Pages など）に置けば公開できます。
+出力の構成は次のとおりです。
+
+| パス | 内容 |
+|---|---|
+| `/` | 4アプリへのリンクを並べたランディングページ |
+| `/synthesizer/` | **Micro Sakura Studio（このシンセ）** |
+| `/piano/` `/drums/` `/guitar/` | 姉妹アプリ |
 
 ### 自動テスト（音声の品質検証）
 
@@ -120,8 +126,10 @@ npm run test       # 型チェック → ビルド → ヘッドレス Chromium 
 （`.github/workflows/deploy-pages.yml`）。
 
 1. GitHub の **Settings → Pages → Build and deployment** で Source を **GitHub Actions** に設定（初回のみ）
-2. `main` に push すると `https://<ユーザー名>.github.io/<リポジトリ名>/` で公開されます
-3. スマホのブラウザで開き「ホーム画面に追加」すればアプリとして起動できます（PWA・オフライン対応）
+2. `main` に push すると自動で公開されます
+   - ランディング … `https://<ユーザー名>.github.io/<リポジトリ名>/`
+   - **このシンセ** … `https://<ユーザー名>.github.io/<リポジトリ名>/synthesizer/`
+3. スマホのブラウザでシンセの URL を開き「ホーム画面に追加」すればアプリとして起動できます（PWA・オフライン対応）
 
 料金は一切かかりません（パブリックリポジトリの無料枠のみ使用）。
 
@@ -182,6 +190,9 @@ src/
     widgets.ts              ノブ・スイッチ等の共通UI
     demoSong.ts             起動時デモ曲
   styles/main.css           スタジオ・ダークテーマ
+synthesizer/index.html      シンセの HTML エントリー（/synthesizer/ で公開）
+public/index.html           4アプリへのランディングページ（/ で公開）
+public/synthesizer/         シンセの PWA マニフェスト・アイコン・Service Worker
 scripts/audio-smoke.mjs     音声の自動検証（Playwright）
 electron/                   Windows デスクトップアプリ用エントリーポイント
 ```
