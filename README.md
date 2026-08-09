@@ -6,8 +6,16 @@
 そのためライセンス上の制約がなく、**このアプリで作った曲はそのまま商用利用・販売できます**。
 アプリ自体も MIT ライセンス相当の自由さでフォーク・再配布・製品化が可能です。
 
-> 🎹 **姉妹アプリ: [Aozora Grand Piano](PIANO.md)** … 同じリポジトリに収録した物理モデリング方式の
-> グランドピアノ・アプリです（`/piano/` で公開、開発時は `npm run piano:dev`）。
+> このリポジトリには、同じ思想（サンプル音源を使わず、その場で音を計算する）で作られた
+> **姉妹アプリ**を収録しています。
+>
+> - 🎹 **[Aozora Grand Piano](PIANO.md)** … 物理モデリング方式のグランドピアノ。
+>   `/piano/` で公開、開発時は `npm run piano:dev`
+> - 🥁 **[Hibiki Drum Machine](DRUMS.md)** … 14種類の打楽器をその場で合成するドラムマシン。
+>   8パターン / ソングモード / ポリメーター / ステム書き出しに対応。
+>   `/drums/` で公開、開発時は `npm run drums:dev`
+> - 🎸 **[Takibi Guitar](GUITAR.md)** … 物理モデリング方式のギター。指板演奏・コード自動運指・
+>   自動伴奏・アンプ／エフェクトまで搭載。`/guitar/` で公開、開発時は `npm run guitar:dev`
 
 ---
 
@@ -23,6 +31,7 @@
 | 🎹 **多彩な入力** | 画面上の鍵盤（マルチタッチ・ベロシティ対応）、PC キーボード、**Web MIDI**（ピッチベンド／モジュレーション／サスティンペダル対応）。 |
 | 📱 **どこでも動く** | PWA としてスマホのホーム画面に追加でき、オフラインでも動作。Electron で Windows デスクトップアプリ化も可能。 |
 
+---
 ---
 
 ## 主な機能
@@ -176,6 +185,10 @@ src/
 scripts/audio-smoke.mjs     音声の自動検証（Playwright）
 electron/                   Windows デスクトップアプリ用エントリーポイント
 ```
+
+姉妹アプリのソースは `src/piano/`（[PIANO.md](PIANO.md)）・`src/drums/`（[DRUMS.md](DRUMS.md)）・
+`src/guitar/`（[GUITAR.md](GUITAR.md)）にあります。ビルドは4つまとめて `npm run build` で行われ、
+`dist/`（シンセ）・`dist/piano/`・`dist/drums/`・`dist/guitar/` に出力されます。
 
 ---
 

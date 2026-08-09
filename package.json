@@ -2,7 +2,7 @@
   "name": "dtm-synth",
   "version": "2.0.0",
   "private": true,
-  "description": "完全無料のバーチャルアナログ・シンセサイザー / DTM ワークステーション（Web / Windows対応）",
+  "description": "完全無料のDTM/音楽制作アプリ集 — シンセ・グランドピアノ・ドラムマシン・ギター（Web / Windows対応）",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -15,6 +15,14 @@
     "piano:icons": "node scripts/gen-piano-icons.mjs",
     "piano:electron": "vite build && electron electron/piano-main.cjs",
     "piano:build:win": "vite build && electron-builder --win portable --config electron-builder.piano.json",
+    "drums:dev": "vite --open /drums/",
+    "drums:icons": "node scripts/gen-drum-icons.mjs",
+    "drums:electron": "vite build && electron electron/drums-main.cjs",
+    "drums:build:win": "vite build && electron-builder --win portable --config electron-builder.drums.json",
+    "guitar:dev": "vite --open /guitar/",
+    "guitar:icons": "node scripts/gen-guitar-icons.mjs",
+    "guitar:electron": "vite build && electron electron/guitar-main.cjs",
+    "guitar:build:win": "vite build && electron-builder --win portable --config electron-builder.guitar.json",
     "test:audio": "node scripts/audio-smoke.mjs",
     "test": "tsc --noEmit && vite build && node scripts/audio-smoke.mjs"
   },

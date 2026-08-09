@@ -1,7 +1,7 @@
 /*
- * Aozora Grand Piano のアイコンを生成する（外部ライブラリ不要）。
- *   node scripts/gen-piano-icons.mjs
- * グランドピアノを真上から見たシルエット + 鍵盤、というモチーフ。
+ * Takibi Guitar のアイコンを生成する（外部ライブラリ不要）。
+ *   node scripts/gen-guitar-icons.mjs
+ * サウンドホールと張られた弦を正面から見た、というモチーフ。
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { encodePng } from './lib/png.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(here, '..', 'public', 'piano');
+const outDir = resolve(here, '..', 'public', 'guitar');
 
 // ------------------------------------------------------------------ drawing
 
@@ -23,63 +23,69 @@ function shade(x, y, opts) {
   const u = (x - padding) / s;
   const v = (y - padding) / s;
 
-  // 背景（角丸の黒鏡面）
-  let bg = [0, 0, 0, 0];
   if (rounded) {
     const r = 0.19;
     const dx = Math.max(r - x, 0, x - (1 - r));
     const dy = Math.max(r - y, 0, y - (1 - r));
     if (Math.hypot(dx, dy) > r) return [0, 0, 0, 0];
   }
-  const grad = mix([46, 36, 28], [10, 8, 7], Math.min(1, y * 1.05));
-  const sheen = Math.max(0, 1 - Math.hypot(x - 0.28, y - 0.16) * 1.7) * 0.35;
-  bg = [...mix(grad, [216, 162, 74], sheen), 255];
 
-  if (u < -0.02 || u > 1.02 || v < -0.02 || v > 1.02) return bg;
+  // 背景：焚火に照らされた木の面
+  const grain = Math.sin(x * 46 + Math.sin(y * 7) * 2.2) * 0.5 + 0.5;
+  const base = mix([64, 38, 22], [24, 14, 9], Math.min(1, y * 1.15));
+  const glow = Math.max(0, 1 - Math.hypot(x - 0.3, y - 0.2) * 1.5) * 0.4;
+  let bg = [...mix(mix(base, [88, 54, 30], grain * 0.16), [239, 138, 60], glow), 255];
 
-  // --- 鍵盤（下部） ---
-  const kbTop = 0.60;
-  const kbBottom = 0.88;
-  const kbLeft = 0.11;
-  const kbRight = 0.89;
-  if (v >= kbTop && v <= kbBottom && u >= kbLeft && u <= kbRight) {
-    const t = (u - kbLeft) / (kbRight - kbLeft);
-    const whites = 7;
-    const idx = Math.floor(t * whites);
-    const frac = t * whites - idx;
-    const depth = (v - kbTop) / (kbBottom - kbTop);
-    // 白鍵
-    let color = mix([255, 252, 245], [206, 196, 178], depth * 0.85);
-    if (frac < 0.045) color = [26, 21, 18]; // 鍵の隙間
-    // 黒鍵（C# D# / F# G# A#）
-    const blackAt = [0.5, 1.5, 3.5, 4.5, 5.5];
-    for (const b of blackAt) {
-      const center = b / whites;
-      const half = 0.3 / whites;
-      if (Math.abs(t - center) < half && depth < 0.62) {
-        color = mix([58, 52, 46], [8, 7, 6], depth / 0.62);
-      }
-    }
-    return [...color, 255];
+  if (u < -0.05 || u > 1.05 || v < -0.05 || v > 1.05) return bg;
+
+  const cx = 0.5;
+  const cy = 0.54;
+  const holeR = 0.2;
+  const rosetteR = 0.265;
+  const d = Math.hypot(u - cx, v - cy);
+
+  // --- ロゼッタ（サウンドホールの飾り輪） ---
+  if (d < rosetteR && d >= holeR) {
+    const t = (d - holeR) / (rosetteR - holeR);
+    const ring = Math.abs(Math.sin(t * Math.PI * 2.4));
+    const color = mix([164, 80, 26], [247, 187, 132], ring * 0.85);
+    bg = [...color, 255];
   }
 
-  // --- グランドピアノのボディ（上部・真上から見た曲線） ---
-  const bodyTop = 0.16;
-  const bodyBottom = 0.58;
-  if (v >= bodyTop && v <= bodyBottom) {
-    const p = (v - bodyTop) / (bodyBottom - bodyTop);
-    const left = 0.11;
-    const right = 0.89 - 0.34 * Math.pow(p, 1.7);
-    if (u >= left && u <= right) {
-      const edge = Math.min(u - left, right - u, v - bodyTop, bodyBottom - v);
-      const brass = mix([232, 196, 138], [156, 108, 34], p * 0.9 + (u - left) * 0.25);
-      if (edge < 0.012) return [...mix(brass, [255, 244, 220], 0.7), 255];
-      // 弦のライン
-      const stringT = (u - left) / Math.max(0.001, right - left);
-      const lines = Math.abs(Math.sin(stringT * Math.PI * 26));
-      const inner = mix([44, 30, 20], brass, 0.18 + lines * 0.22);
-      return [...inner, 255];
+  // --- サウンドホール（中は暗い） ---
+  if (d < holeR) {
+    const t = d / holeR;
+    // 内側の縁だけ光を受ける
+    const edge = Math.pow(t, 6) * 0.55;
+    const inner = mix([10, 6, 4], [150, 82, 34], edge);
+    bg = [...inner, 255];
+  }
+
+  // --- 弦（縦に6本、下ほど太い） ---
+  const stringTop = 0.06;
+  const stringBottom = 0.94;
+  if (v >= stringTop && v <= stringBottom) {
+    for (let i = 0; i < 6; i++) {
+      const sx = 0.215 + (i / 5) * 0.57;
+      const w = 0.0038 + i * 0.0028;
+      const dist = Math.abs(u - sx);
+      if (dist < w) {
+        const t = dist / w;
+        const lit = 1 - t * t;
+        // サウンドホールの上では弦がはっきり見える
+        const over = d < holeR ? 1 : 0.82;
+        const color = mix([150, 116, 82], [255, 240, 218], lit * over);
+        bg = [...color, 255];
+      }
     }
+  }
+
+  // --- ブリッジ（弦を留める黒い帯） ---
+  if (v > 0.8 && v < 0.878 && u > 0.15 && u < 0.85) {
+    const t = (v - 0.8) / 0.078;
+    bg = [...mix([46, 26, 14], [16, 9, 5], t), 255];
+    // サドル（白い線）
+    if (v > 0.812 && v < 0.828) bg = [236, 220, 196, 255];
   }
 
   return bg;
@@ -122,7 +128,7 @@ const files = [
   ['icon-512.png', render(512)],
   // マスカブルは全面塗り + 内側 80% に本体を配置
   ['icon-512-maskable.png', render(512, { padding: 0.1, rounded: false })],
-  ['apple-touch-icon.png', render(180, { rounded: false, opaqueBg: [16, 13, 11] })],
+  ['apple-touch-icon.png', render(180, { rounded: false, opaqueBg: [16, 11, 8] })],
 ];
 
 for (const [name, data] of files) {
