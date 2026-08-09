@@ -7,14 +7,16 @@ Korg microKORG 系のシンセシス（2オシレーター + フィルター + �
 
 外部ライブラリ・有料サンプル・課金要素は一切なし。ソースコードのみで音を生成しています。
 
-> 🎹 **姉妹アプリ: [Aozora Grand Piano](PIANO.md)** … 同じリポジトリに、サンプル音源を使わない
-> 物理モデリング方式のグランドピアノ・アプリを収録しています（`/piano/` で公開、
-> 開発時は `npm run piano:dev`）。仕様と仕組みは [PIANO.md](PIANO.md) を参照してください。
+> このリポジトリには、同じ思想（サンプル音源を使わず、その場で音を計算する）で作られた
+> **姉妹アプリ**を収録しています。
 >
-> 🥁 **姉妹アプリ: [Hibiki Drum Machine](DRUMS.md)** … サンプルを使わず14種類の打楽器を
-> その場で合成するドラムマシンです。8パターン / ソングモード / ポリメーター / ステム書き出しに
-> 対応しています（`/drums/` で公開、開発時は `npm run drums:dev`）。
-> 仕様と仕組みは [DRUMS.md](DRUMS.md) を参照してください。
+> - 🎹 **[Aozora Grand Piano](PIANO.md)** … 物理モデリング方式のグランドピアノ。
+>   `/piano/` で公開、開発時は `npm run piano:dev`
+> - 🥁 **[Hibiki Drum Machine](DRUMS.md)** … 14種類の打楽器をその場で合成するドラムマシン。
+>   8パターン / ソングモード / ポリメーター / ステム書き出しに対応。
+>   `/drums/` で公開、開発時は `npm run drums:dev`
+> - 🎸 **[Takibi Guitar](GUITAR.md)** … 物理モデリング方式のギター。指板演奏・コード自動運指・
+>   自動伴奏・アンプ／エフェクトまで搭載。`/guitar/` で公開、開発時は `npm run guitar:dev`
 
 ## 主な機能
 
@@ -129,6 +131,10 @@ src/
   styles/main.css    プロフェッショナル・ダークテーマ（ハードウェアシンセ風UI）
 electron/main.cjs     Windows デスクトップアプリ用 Electron エントリーポイント
 ```
+
+姉妹アプリのソースは `src/piano/`（[PIANO.md](PIANO.md)）・`src/drums/`（[DRUMS.md](DRUMS.md)）・
+`src/guitar/`（[GUITAR.md](GUITAR.md)）にあります。ビルドは4つまとめて `npm run build` で行われ、
+`dist/`（シンセ）・`dist/piano/`・`dist/drums/`・`dist/guitar/` に出力されます。
 
 ## 技術スタック
 
