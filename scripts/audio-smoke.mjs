@@ -203,7 +203,7 @@ page.on('console', (msg) => {
 page.on('pageerror', (err) => consoleErrors.push(String(err)));
 
 console.log('\n▶ アプリを起動…');
-await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
+await page.goto(`http://localhost:${PORT}/synthesizer/`, { waitUntil: 'networkidle' });
 await page.getByRole('button', { name: /スタジオを起動/ }).click();
 await page.waitForSelector('.shell', { timeout: 15000 });
 check('アプリが起動する', true);

@@ -6,7 +6,7 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --open /synthesizer/",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "electron:dev": "vite build && electron electron/main.cjs",

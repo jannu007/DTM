@@ -11,8 +11,8 @@ export default defineConfig({
     assetsInlineLimit: (filePath: string) => (/worklets?[\\/].*\.js$|-processor\.js$/.test(filePath) ? false : undefined),
     rollupOptions: {
       input: {
-        // Micro Sakura Studio（シンセ）
-        main: resolve(__dirname, 'index.html'),
+        // Micro Sakura Studio（シンセ・/synthesizer/ で公開）
+        main: resolve(__dirname, 'synthesizer/index.html'),
         // Aozora Grand Piano（グランドピアノ・/piano/ で公開）
         piano: resolve(__dirname, 'piano/index.html'),
         // Hibiki Drum Machine（ドラムマシン・/drums/ で公開）
