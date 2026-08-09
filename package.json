@@ -1,6 +1,6 @@
 {
   "name": "dtm-synth",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "description": "完全無料のDTM/音楽制作アプリ集 — シンセ・グランドピアノ・ドラムマシン・ギター（Web / Windows対応）",
   "type": "module",
@@ -27,9 +27,12 @@
     "bass:test": "node scripts/test-bass-dsp.mjs",
     "bass:icons": "node scripts/gen-bass-icons.mjs",
     "bass:electron": "vite build && electron electron/bass-main.cjs",
-    "bass:build:win": "vite build && electron-builder --win portable --config electron-builder.bass.json"
+    "bass:build:win": "vite build && electron-builder --win portable --config electron-builder.bass.json",
+    "test:audio": "node scripts/audio-smoke.mjs",
+    "test": "tsc --noEmit && vite build && node scripts/test-bass-dsp.mjs && node scripts/audio-smoke.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.49.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.2"
   },
