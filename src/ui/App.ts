@@ -17,7 +17,7 @@ import { createPianoRoll, type PianoRollHandle } from './PianoRoll';
 import { buildSongView, type SongViewHandle } from './SongView';
 import { buildSynthPanel } from './SynthPanel';
 import { buildVirtualKeyboard, type KeyboardHandle } from './Keyboard';
-import { createMeter } from './Visualizers';
+import { createMeter, createScope } from './Visualizers';
 import { createButton, createKnob, openModal, toast, type KnobHandle } from './widgets';
 import { demoSong } from './demoSong';
 
@@ -192,6 +192,7 @@ export class App {
     shell.className = 'shell';
 
     shell.appendChild(this.buildHeader());
+    shell.appendChild(this.buildTopScope());
 
     const main = document.createElement('div');
     main.className = 'main';
@@ -394,6 +395,24 @@ export class App {
     actions.appendChild(loadInput);
     actions.appendChild(createButton('？', () => this.showHelp(), 'btn-sm btn-icon'));
     bar.appendChild(actions);
+
+    return bar;
+  }
+
+  private buildTopScope(): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'top-scope-bar';
+
+    const scope = createScope(this.engine.analyser);
+    scope.element.classList.add('scope-compact');
+    bar.appendChild(scope.element);
+
+    let mode: 'wave' | 'spectrum' = 'wave';
+    const modeBtn = createButton('波形 / スペクトラム 切替', () => {
+      mode = mode === 'wave' ? 'spectrum' : 'wave';
+      scope.setMode(mode);
+    }, 'btn btn-sm');
+    bar.appendChild(modeBtn);
 
     return bar;
   }
