@@ -42,7 +42,7 @@
   },
   "build": {
     "appId": "com.microsakurastudio.app",
-    "productName": "Micro Sakura Studio",
+    "productName": "Akatsuki Synth",
     "files": [
       "dist/**/*",
       "electron/**/*"

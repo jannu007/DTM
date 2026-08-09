@@ -1,5 +1,5 @@
 /*
- * Micro Sakura Studio — リアルタイム録音用 AudioWorklet
+ * Akatsuki Synth — リアルタイム録音用 AudioWorklet
  * マスター出力をそのまま Float32 のまま取り出してメインスレッドへ渡します。
  * （非推奨の ScriptProcessorNode を使わないため、UI 描画による音切れが起きません）
  */

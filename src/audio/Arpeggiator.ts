@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — アルペジエーター
+ * Akatsuki Synth — アルペジエーター
  * 押さえている鍵盤から自動的にフレーズを生成します（ラッチ／スイング対応）。
  */
 import type { ArpParams } from './types';

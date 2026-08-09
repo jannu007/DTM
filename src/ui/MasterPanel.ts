@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — マスター／センドエフェクト設定パネル
+ * Akatsuki Synth — マスター／センドエフェクト設定パネル
  */
 import type { AudioEngine } from '../audio/AudioEngine';
 import { createKnob, createSelect, createToggle, moduleBox } from './widgets';
@@ -99,4 +99,5 @@ export function buildMasterPanel(container: HTMLElement, engine: AudioEngine, on
       createKnob({ label: 'Width', min: 0, max: 1, value: s.chorus.spread, format: pctFmt, onChange: (v) => { s.chorus.spread = v; apply(); } })
     )
   );
+
 }

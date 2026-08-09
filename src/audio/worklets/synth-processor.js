@@ -1,5 +1,5 @@
 /*
- * Micro Sakura Studio — シンセシス DSP コア (AudioWorklet)
+ * Akatsuki Synth — シンセシス DSP コア (AudioWorklet)
  *
  * 1トラック = 1プロセッサ。ポリフォニックなボイス管理・オシレーター・フィルター・
  * エンベロープ・LFO・ドラム音源をすべてこのファイル内で生成します。

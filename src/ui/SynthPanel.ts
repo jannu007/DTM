@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — シンセ・パラメーターパネル
+ * Akatsuki Synth — シンセ・パラメーターパネル
  */
 import { createKnob, createSelect, createToggle, moduleBox } from './widgets';
 import { createEnvelopeView, createFilterView } from './Visualizers';

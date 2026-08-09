@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — マスターバス／センドエフェクト
+ * Akatsuki Synth — マスターバス／センドエフェクト
  *
  * リアルタイム再生用の AudioContext と、書き出し用の OfflineAudioContext の
  * 両方で同じグラフを構築できるように BaseAudioContext を受け取る設計にしています。
@@ -192,6 +192,9 @@ export class AudioEngine {
   private limiter: DynamicsCompressorNode;
   masterGain: GainNode;
   analyser: AnalyserNode;
+  /** ステレオ・レベル計測用（左右個別） */
+  analyserL: AnalyserNode;
+  analyserR: AnalyserNode;
 
   private recorderNode: AudioWorkletNode | null = null;
   private recChunks: Float32Array[][] = [];
@@ -293,6 +296,12 @@ export class AudioEngine {
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.75;
+    this.analyserL = ctx.createAnalyser();
+    this.analyserR = ctx.createAnalyser();
+    for (const a of [this.analyserL, this.analyserR]) {
+      a.fftSize = 1024;
+      a.smoothingTimeConstant = 0.4;
+    }
 
     this.sumBus.connect(this.driveNode);
     this.driveNode.connect(this.eqLow);
@@ -303,6 +312,18 @@ export class AudioEngine {
     this.limiter.connect(this.masterGain);
     this.masterGain.connect(this.analyser);
     this.analyser.connect(ctx.destination);
+
+    // 左右のチャンネルを分けてレベルを測る。無音のシンクへ流すことで、
+    // 出力に影響を与えずにレンダリンググラフへ確実に組み込まれるようにする
+    const splitter = ctx.createChannelSplitter(2);
+    const silent = ctx.createGain();
+    silent.gain.value = 0;
+    this.masterGain.connect(splitter);
+    splitter.connect(this.analyserL, 0);
+    splitter.connect(this.analyserR, 1);
+    this.analyserL.connect(silent);
+    this.analyserR.connect(silent);
+    silent.connect(ctx.destination);
 
     this.applySettings(settings, true);
   }

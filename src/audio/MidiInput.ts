@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — 入力（Web MIDI / PCキーボード）
+ * Akatsuki Synth — 入力（Web MIDI / PCキーボード）
  */
 export type NoteHandler = (note: number, velocity: number) => void;
 

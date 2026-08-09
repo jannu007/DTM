@@ -1,6 +1,6 @@
 {
-  "name": "Micro Sakura Studio",
-  "short_name": "Micro Sakura",
+  "name": "Akatsuki Synth",
+  "short_name": "Akatsuki",
   "description": "完全無料のバーチャルアナログ・シンセサイザー / DTM ワークステーション。オフラインでも動作します。",
   "id": "/synthesizer/",
   "start_url": "./",

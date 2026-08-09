@@ -4,7 +4,7 @@
 録音済みのピアノ音源（サンプル）を一切使わず、**88鍵それぞれの弦の振動をその場で計算**して
 音を作っています。アプリ本体は約 60 KB（gzip 圧縮時）で、追加ダウンロードは一切ありません。
 
-このリポジトリのシンセ（Micro Sakura Studio）とは独立したアプリで、`/piano/` で公開されます。
+このリポジトリのシンセ（Akatsuki Synth）とは独立したアプリで、`/piano/` で公開されます。
 
 - 開発サーバー … `npm run piano:dev` → <http://localhost:5174/piano/>
 - 本番ビルド … `npm run build` → `dist/piano/`

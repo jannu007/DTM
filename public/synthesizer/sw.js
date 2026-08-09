@@ -1,4 +1,4 @@
-const CACHE_NAME = 'micro-sakura-studio-cache-v5';
+const CACHE_NAME = 'akatsuki-synth-cache-v6';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

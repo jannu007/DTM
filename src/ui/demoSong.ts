@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — 起動時に読み込まれるデモ曲
+ * Akatsuki Synth — 起動時に読み込まれるデモ曲
  * 初回起動でもすぐに「鳴る状態」から始められるようにしています。
  */
 import { basePatch, getPreset } from '../audio/presets';
@@ -101,7 +101,7 @@ export function demoSong() {
   }
 
   return {
-    format: 'micro-sakura-studio',
+    format: 'akatsuki-synth',
     version: 2,
     bpm: 112,
     swing: 0.12,

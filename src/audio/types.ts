@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — 音色パラメータの型定義
+ * Akatsuki Synth — 音色パラメータの型定義
  *
  * ここで定義したオブジェクトはそのまま AudioWorklet（synth-processor.js）へ
  * 転送され、DSP 側でも同じフィールド名で参照されます。

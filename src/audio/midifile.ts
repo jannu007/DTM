@@ -1,5 +1,5 @@
 /**
- * Micro Sakura Studio — 標準MIDIファイル（SMF フォーマット1）書き出し
+ * Akatsuki Synth — 標準MIDIファイル（SMF フォーマット1）書き出し
  * 作った曲を他の DAW（Cubase / Logic / FL Studio 等）へ持ち込めるようにします。
  */
 import type { Sequencer } from './Sequencer';
