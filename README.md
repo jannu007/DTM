@@ -10,6 +10,11 @@ Korg microKORG 系のシンセシス（2オシレーター + フィルター + �
 > 🎹 **姉妹アプリ: [Aozora Grand Piano](PIANO.md)** … 同じリポジトリに、サンプル音源を使わない
 > 物理モデリング方式のグランドピアノ・アプリを収録しています（`/piano/` で公開、
 > 開発時は `npm run piano:dev`）。仕様と仕組みは [PIANO.md](PIANO.md) を参照してください。
+>
+> 🥁 **姉妹アプリ: [Hibiki Drum Machine](DRUMS.md)** … サンプルを使わず14種類の打楽器を
+> その場で合成するドラムマシンです。8パターン / ソングモード / ポリメーター / ステム書き出しに
+> 対応しています（`/drums/` で公開、開発時は `npm run drums:dev`）。
+> 仕様と仕組みは [DRUMS.md](DRUMS.md) を参照してください。
 
 ## 主な機能
 
