@@ -21,6 +21,8 @@ export default defineConfig({
         guitar: resolve(__dirname, 'guitar/index.html'),
         // Kurogane Bass（エレキベース・/bass/ で公開）
         bass: resolve(__dirname, 'bass/index.html'),
+        // Hoshizora Vocal（日本語歌声シンセ・/vocal/ で公開）
+        vocal: resolve(__dirname, 'vocal/index.html'),
       },
     },
   },

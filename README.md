@@ -19,6 +19,9 @@
 > - 🎸 **[Kurogane Bass](BASS.md)** … デジタル導波管方式のエレキベース。指板をタップして演奏でき、
 >   スライド・チョーキング・スラップ・フレットレスに対応。
 >   `/bass/` で公開、開発時は `npm run bass:dev`
+> - 🎤 **[Hoshizora Vocal](VOCAL.md)** … 収録音声（ボイスバンク）を使わない日本語歌声シンセ。
+>   かな歌詞をピアノロールに書くだけで歌い、伴奏つきで WAV / MIDI に書き出せます。
+>   `/vocal/` で公開、開発時は `npm run vocal:dev`
 
 ---
 
@@ -105,7 +108,7 @@ npm run preview    # ビルド結果をローカルで確認
 |---|---|
 | `/` | 各アプリへのリンクを並べたランディングページ |
 | `/synthesizer/` | **Akatsuki Synth（このシンセ）** |
-| `/piano/` `/drums/` `/guitar/` `/bass/` | 姉妹アプリ |
+| `/piano/` `/drums/` `/guitar/` `/bass/` `/vocal/` | 姉妹アプリ |
 
 ### 自動テスト（音声の品質検証）
 
@@ -202,9 +205,10 @@ electron/                   Windows デスクトップアプリ用エントリ�
 ```
 
 姉妹アプリのソースは `src/piano/`（[PIANO.md](PIANO.md)）・`src/drums/`（[DRUMS.md](DRUMS.md)）・
-`src/guitar/`（[GUITAR.md](GUITAR.md)）・`src/bass/`（[BASS.md](BASS.md)）にあります。
+`src/guitar/`（[GUITAR.md](GUITAR.md)）・`src/bass/`（[BASS.md](BASS.md)）・
+`src/vocal/`（[VOCAL.md](VOCAL.md)）にあります。
 ビルドはまとめて `npm run build` で行われ、`dist/synthesizer/`（シンセ）・`dist/piano/`・
-`dist/drums/`・`dist/guitar/`・`dist/bass/` に出力されます。
+`dist/drums/`・`dist/guitar/`・`dist/bass/`・`dist/vocal/` に出力されます。
 
 ---
 

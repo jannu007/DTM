@@ -28,6 +28,10 @@
     "bass:icons": "node scripts/gen-bass-icons.mjs",
     "bass:electron": "vite build && electron electron/bass-main.cjs",
     "bass:build:win": "vite build && electron-builder --win portable --config electron-builder.bass.json",
+    "vocal:dev": "vite --open /vocal/",
+    "vocal:icons": "node scripts/gen-vocal-icons.mjs",
+    "vocal:electron": "vite build && electron electron/vocal-main.cjs",
+    "vocal:build:win": "vite build && electron-builder --win portable --config electron-builder.vocal.json",
     "test:audio": "node scripts/audio-smoke.mjs",
     "test": "tsc --noEmit && vite build && node scripts/test-bass-dsp.mjs && node scripts/audio-smoke.mjs"
   },
